@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XML 프롬프트 에디터</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <button class="hamburger-btn" id="hamburgerBtn" title="태그 프리셋 메뉴 열기">
+        <i class="fas fa-bars"></i>
+    </button>
+    
+    <button class="floating-preview-btn" id="floatingPreviewBtn" title="미리보기 패널 열기">
+        <i class="fas fa-eye"></i>
+    </button>
+    
+    <div class="overlay" id="overlay"></div>
+    
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-code"></i> XML 프롬프트 에디터</h1>
+            <div class="header-actions">
+                <button id="clearAllBtn" class="btn btn-secondary" title="모든 블록 삭제 (Ctrl+N)">
+                    <i class="fas fa-trash-alt"></i> 모두 삭제
+                </button>
+                <button id="copyBtnHeader" class="btn btn-primary" title="XML 형식으로 복사 (Ctrl+S)">
+                    <i class="fas fa-copy"></i> 복사
+                </button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <aside class="sidebar" id="sidebar">
+                <h3><i class="fas fa-tags"></i> 태그 프리셋</h3>
+                
+                <div class="preset-divider"></div>
+                
+                <div class="preset-category">
+                    <h4>기본 구조</h4>
+                    <div class="preset-buttons">
+                        <button class="preset-btn" data-tag="role" title="AI의 역할과 전문성 정의">
+                            <i class="fas fa-user"></i> Role
+                        </button>
+                        <button class="preset-btn" data-tag="instructions" title="구체적인 작업 지시사항">
+                            <i class="fas fa-list"></i> Instructions
+                        </button>
+                        <button class="preset-btn" data-tag="context" title="배경 정보와 상황 설명">
+                            <i class="fas fa-info-circle"></i> Context
+                        </button>
+                        <button class="preset-btn" data-tag="examples" title="입출력 예시 (Few-shot)">
+                            <i class="fas fa-lightbulb"></i> Examples
+                        </button>
+                    </div>
+                </div>
+
+                <div class="preset-category">
+                    <h4>고급 태그</h4>
+                    <div class="preset-buttons">
+                        <button class="preset-btn" data-tag="thinking" title="사고 과정 요청 (CoT)">
+                            <i class="fas fa-brain"></i> Thinking
+                        </button>
+                        <button class="preset-btn" data-tag="format" title="출력 형식 지정">
+                            <i class="fas fa-align-left"></i> Format
+                        </button>
+                        <button class="preset-btn" data-tag="constraints" title="제약조건과 규칙">
+                            <i class="fas fa-exclamation-triangle"></i> Constraints
+                        </button>
+                        <button class="preset-btn" data-tag="output" title="최종 출력 요구사항">
+                            <i class="fas fa-arrow-right"></i> Output
+                        </button>
+                    </div>
+                </div>
+
+                <div class="credits-section">
+                    <div class="credit-header">
+                        <p><strong>Developed by vodqar</strong></p>
+                        <p class="license">
+                            <i class="fab fa-creative-commons"></i>
+                            <i class="fab fa-creative-commons-by"></i>
+                            <i class="fab fa-creative-commons-nc"></i>
+                            <i class="fab fa-creative-commons-nd"></i>
+                            CC BY-NC-ND
+                        </p>
+                    </div>
+                    <div class="credit-links">
+                        <a href="mailto:mbk7990@gmail.com" title="이메일 보내기">
+                            <i class="fas fa-envelope"></i> Email
+                        </a>
+                        <a href="https://github.com/vodqar" target="_blank" rel="noopener noreferrer" title="GitHub 프로필 방문">
+                            <i class="fab fa-github"></i> GitHub
+                        </a>
+                    </div>
+                    <p class="license-note">저작자 표시-비영리-변경금지</p>
+                </div>
+            </aside>
+
+            <main class="editor-area">
+                <div class="editor-header">
+                    <h3><i class="fas fa-edit"></i> 프롬프트 편집기</h3>
+                    <div class="editor-actions">
+                        <button id="addBlockBtn" class="btn btn-small" title="새 블록 추가">
+                            <i class="fas fa-plus"></i> 블록 추가
+                        </button>
+                    </div>
+                </div>
+
+                <div class="inline-block-add" id="inlineBlockAdd">
+                    <div class="inline-add-container">
+                        <input 
+                            type="text" 
+                            id="inlineAddInput" 
+                            class="inline-add-input" 
+                            placeholder="새 태그 이름을 입력하세요 (예: task, goal, summary...)"
+                            autocomplete="off"
+                            aria-label="새 블록 태그 입력"
+                        >
+                        <div class="inline-add-actions">
+                            <button id="inlineAddConfirm" class="inline-add-btn inline-add-confirm" title="블록 추가 (Enter)">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button id="inlineAddCancel" class="inline-add-btn inline-add-cancel" title="취소 (ESC)">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="blockContainer" class="block-container">
+                    </div>
+
+                <div class="empty-state" id="emptyState">
+                    <i class="fas fa-cube"></i>
+                    <h4>프롬프트 블록을 추가해보세요</h4>
+                    <p>좌측 프리셋에서 태그를 선택하거나 직접 블록을 추가하세요</p>
+                </div>
+            </main>
+
+            <aside class="preview-area" id="previewArea">
+                <div class="preview-header">
+                    <h3><i class="fas fa-eye"></i> 미리보기</h3>
+                    <div class="preview-actions">
+                        <button id="copyBtn" class="btn btn-small" title="클립보드에 복사 (Ctrl+C)">
+                            <i class="fas fa-copy"></i> 복사
+                        </button>
+                        <button id="previewCloseBtn" class="preview-close-btn" title="미리보기 닫기">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="preview-content">
+                    <pre id="previewCode"></pre>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <script src="js/presets.js"></script>
+    <script src="js/blocks.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
