@@ -20,23 +20,73 @@ class PromptEditorApp {
             return;
         }
         
+        this.renderPresets(); // ✨ 프리셋 버튼 동적 생성 (개선됨)
         this.setupEventListeners();
         this.setupKeyboardShortcuts();
         this.addAnimationStyles();
         this.handleResize();
         
         this.isInitialized = true;
-        console.log('프롬프트 에디터가 초기화되었습니다. - 최적화 버전');
+        console.log('프롬프트 에디터가 초기화되었습니다. - v2');
+    }
+
+    // ✨ 프리셋 버튼 동적 렌더링 (개선된 버전)
+    renderPresets() {
+        const sidebar = document.getElementById('sidebar');
+        const creditsSection = sidebar.querySelector('.credits-section');
+        
+        if (!sidebar || !creditsSection) {
+            console.error("사이드바 또는 크레딧 섹션을 찾을 수 없습니다.");
+            return;
+        }
+
+        // 기존 프리셋 카테고리들 삭제
+        sidebar.querySelectorAll('.preset-category, .preset-divider').forEach(el => el.remove());
+
+        // TAG_PRESETS 배열을 기반으로 카테고리와 버튼 생성
+        TAG_PRESETS.forEach(category => {
+            // 구분선 생성
+            const divider = document.createElement('div');
+            divider.className = 'preset-divider';
+            sidebar.insertBefore(divider, creditsSection);
+
+            // 카테고리 컨테이너 생성
+            const categoryContainer = document.createElement('div');
+            categoryContainer.className = 'preset-category';
+            
+            // 카테고리 제목 생성
+            const categoryTitle = document.createElement('h4');
+            categoryTitle.textContent = category.title;
+            categoryContainer.appendChild(categoryTitle);
+
+            // 버튼 컨테이너 생성
+            const buttonsContainer = document.createElement('div');
+            buttonsContainer.className = 'preset-buttons';
+
+            // 각 프리셋에 대한 버튼 생성
+            category.presets.forEach(preset => {
+                const button = document.createElement('button');
+                button.className = 'preset-btn';
+                button.setAttribute('data-tag', preset.key);
+                button.title = preset.description;
+                button.innerHTML = `<i class="${preset.icon}"></i> ${preset.name}`;
+                buttonsContainer.appendChild(button);
+            });
+
+            categoryContainer.appendChild(buttonsContainer);
+            sidebar.insertBefore(categoryContainer, creditsSection);
+        });
     }
 
     // 이벤트 리스너 설정
     setupEventListeners() {
-        // 프리셋 버튼 이벤트
-        document.querySelectorAll('.preset-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const tagName = e.currentTarget.getAttribute('data-tag');
+        // ✨ 이벤트 위임을 사용하여 동적으로 생성된 버튼 처리
+        document.getElementById('sidebar').addEventListener('click', (e) => {
+            const presetBtn = e.target.closest('.preset-btn');
+            if (presetBtn) {
+                const tagName = presetBtn.getAttribute('data-tag');
                 this.addPresetBlock(tagName);
-            });
+            }
         });
 
         this.initPanelSystem();
@@ -56,6 +106,8 @@ class PromptEditorApp {
         // 윈도우 리사이즈 이벤트
         window.addEventListener('resize', this.handleResize.bind(this));
     }
+
+    // --- 이하 코드는 변경사항 없습니다 ---
 
     // 인라인 블록 추가 시스템 초기화
     initInlineBlockAdd() {
@@ -269,7 +321,6 @@ class PromptEditorApp {
             if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
                 e.preventDefault();
 
-                // 활성화된 입력 필드가 없을 때만 복사 기능 실행
                 if (document.activeElement.tagName.toLowerCase() !== 'textarea') {
                     this.copyToClipboard();
                 }
@@ -291,52 +342,31 @@ class PromptEditorApp {
     addAnimationStyles() {
         const style = document.createElement('style');
         style.textContent = `
-            @keyframes slideInFromRight {
-                from {
-                    opacity: 0;
-                    transform: translateX(100px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateX(0);
-                }
-            }
-            
-            @keyframes slideOutToRight {
-                from {
-                    opacity: 1;
-                    transform: translateX(0);
-                }
-                to {
-                    opacity: 0;
-                    transform: translateX(100px);
-                }
-            }
-            
-            .block-entering {
-                animation: slideIn 0.4s ease-out;
-            }
+            @keyframes slideInFromRight { from { opacity: 0; transform: translateX(100px); } to { opacity: 1; transform: translateX(0); } }
+            @keyframes slideOutToRight { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100px); } }
+            .block-entering { animation: slideIn 0.4s ease-out; }
         `;
         document.head.appendChild(style);
     }
 
     // 프리셋 블록 추가
     addPresetBlock(tagName) {
-        if (!TAG_PRESETS[tagName]) {
+        const allPresets = TAG_PRESETS.flatMap(category => category.presets);
+        const preset = allPresets.find(p => p.key === tagName);
+
+        if (!preset) {
             console.error(`Unknown preset: ${tagName}`);
             return;
         }
         
         this.blockManager.addBlock(tagName);
         
-        // 피드백 효과
         const presetBtn = document.querySelector(`[data-tag="${tagName}"]`);
         if (presetBtn) {
             presetBtn.style.transform = 'scale(0.95)';
             setTimeout(() => presetBtn.style.transform = '', 150);
         }
 
-        // 모바일에서 블록 추가 후 사이드바 자동 닫기
         const SIDEBAR_CLOSE_DELAY = 800;
         if (window.innerWidth <= 768) {
             setTimeout(() => this.closePanel('sidebar'), SIDEBAR_CLOSE_DELAY);
@@ -355,7 +385,6 @@ class PromptEditorApp {
             navigator.clipboard.writeText(xmlContent).then(() => {
                 showNotification('프롬프트가 클립보드에 복사되었습니다!', 'success');
                 
-                // 버튼 피드백
                 const buttons = [document.getElementById('copyBtnHeader'), document.getElementById('copyBtn')];
                 buttons.forEach(btn => {
                     if (btn) {
