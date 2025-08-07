@@ -15,10 +15,7 @@ A web-based editor for easily creating and managing AI prompts in XML format. Th
 
 ## **🚀 How to Use**
 
-This project can be used immediately by opening the index.html file in a web browser, with no separate build process required.  
-\# To run locally:  
-1\. Clone or download this repository.  
-2\. Open the \`index.html\` file in your browser.
+https://vodqar.github.io/XML-Prompt-Editor/
 
 ## **🛠️ Tech Stack**
 
