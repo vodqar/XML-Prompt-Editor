@@ -27,7 +27,7 @@ class PromptEditorApp {
         this.handleResize();
         
         this.isInitialized = true;
-        console.log('프롬프트 에디터가 초기화되었습니다. - v2');
+        console.log('프롬프트 에디터가 초기화되었습니다. - v2.1 (자동완성 기능 추가)');
     }
 
     // ✨ 프리셋 버튼 동적 렌더링 (개선된 버전)
@@ -107,7 +107,12 @@ class PromptEditorApp {
         window.addEventListener('resize', this.handleResize.bind(this));
     }
 
-    // --- 이하 코드는 변경사항 없습니다 ---
+    // --- ✨ 새로운 메서드: 자동완성을 위한 모든 태그 목록 반환 ---
+    getAllTags() {
+        const presetTags = TAG_PRESETS.flatMap(category => category.presets.map(p => p.key));
+        const customTags = this.blockManager.blocks.map(b => b.tagName);
+        return [...new Set([...presetTags, ...customTags])].sort();
+    }
 
     // 인라인 블록 추가 시스템 초기화
     initInlineBlockAdd() {

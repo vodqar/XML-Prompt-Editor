@@ -78,20 +78,16 @@ const TAG_PRESETS = [
                 name: "Thinking",
                 icon: "fas fa-brain",
                 description: "사고 과정 요청 (CoT)",
-                placeholder: "사고 과정을 직접 입력하거나 아래 템플릿을 선택하세요.",
-                allowMultiple: true, // ✨ 중복 선택 활성화 예시
+                placeholder: "사고 과정을 직접 입력하거나 위 템플릿을 선택하세요.",
+                allowMultiple: false, // ✨ 중복 선택 활성화 예시
                 promptTemplates: [
                     {
-                        label: "단계별 사고",
-                        value: "단계별로 생각해주세요:\n1. 문제를 분석하고\n2. 가능한 접근법을 고려한 후\n3. 최적의 해결책을 제시해주세요."
+                        label: "순차적 사고 유도",
+                        value: "[차근차근(Step by step) 생각하고, 생각한 과정을 이곳에 작성하세요.]"
                     },
                     {
-                        label: "장단점 분석",
-                        value: "이 주제에 대한 장점, 단점, 그리고 잠재적 위험에 대해 분석해주세요."
-                    },
-                    {
-                        label: "문제 정의",
-                        value: "문제 정의:\n\n목표:\n\n해결 방안 모색:"
+                        label: "사고 유도",
+                        value: "[이곳에 생각한 과정을 작성하세요.]"
                     }
                 ]
             },
@@ -100,18 +96,7 @@ const TAG_PRESETS = [
                 name: "Format",
                 icon: "fas fa-align-left",
                 description: "출력 형식 지정",
-                placeholder: "출력 형식을 직접 입력하거나 아래 템플릿을 선택하세요.",
-                allowMultiple: false, // 중복 선택 비활성화 (기본값)
-                promptTemplates: [
-                    {
-                        label: "JSON 형식",
-                        value: '다음과 같은 JSON 형식으로 출력해주세요:\n{\n  "key": "value"\n}'
-                    },
-                    {
-                        label: "마크다운 리스트",
-                        value: "핵심 내용을 마크다운 리스트 형식으로 요약해주세요:\n- 항목 1\n- 항목 2"
-                    }
-                ]
+                placeholder: "출력 형식을 직접 입력하거나 아래 템플릿을 선택하세요."
             },
             {
                 key: "constraints",

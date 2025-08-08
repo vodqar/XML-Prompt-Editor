@@ -5,16 +5,25 @@ class PromptBlock {
         this.tagName = tagName;
         this.content = content;
         
-        // 새로운 TAG_PRESETS 구조에 맞게 프리셋 찾기
+        // 이 블록이 어떤 프리셋에 해당하는지 찾습니다. (없을 수도 있습니다)
         const allPresets = TAG_PRESETS.flatMap(category => category.presets);
         this.preset = allPresets.find(p => p.key === tagName) || null;
+
+        // 자동완성 기능의 상태를 관리하는 객체입니다.
+        this.autocomplete = {
+            active: false,      // 자동완성 창이 활성화되었는지 여부
+            triggerIndex: -1,   // 자동완성이 시작된 텍스트 위치 (예: '<'의 위치)
+            activeIndex: -1,    // 현재 하이라이트된 추천 항목의 인덱스
+            suggestions: [],    // 추천 목록 배열
+            element: null       // 자동완성 창의 HTML 요소
+        };
     }
 
     generateId() {
         return 'block_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
 
-    // HTML 요소 생성
+    // 이 블록에 해당하는 HTML 요소를 생성합니다.
     createElement() {
         const blockElement = document.createElement('div');
         blockElement.className = 'prompt-block';
@@ -42,10 +51,12 @@ class PromptBlock {
                 <textarea placeholder="${placeholder}" rows="4">${this.content}</textarea>
             </div>
         `;
+        // 생성된 HTML 요소에 필요한 이벤트들을 연결합니다.
         this.attachEventListeners(blockElement);
         return blockElement;
     }
 
+    // 프리셋에 정의된 템플릿 버튼들의 HTML을 생성합니다.
     createTemplatesHTML() {
         if (!this.preset || !this.preset.promptTemplates) return '';
         const buttonsHTML = this.preset.promptTemplates.map((template, index) => 
@@ -54,13 +65,16 @@ class PromptBlock {
         return `<div class="template-container">${buttonsHTML}</div>`;
     }
 
-    // 이벤트 리스너 연결
+    // HTML 요소에 각종 이벤트 리스너를 연결합니다.
     attachEventListeners(element) {
         const textarea = element.querySelector('textarea');
         const deleteBtn = element.querySelector('.block-btn.delete');
 
-        // ✨ 수정: 사용자의 직접 입력을 감지
-        textarea.addEventListener('input', (e) => this.handleTextareaInput(e, false)); // isTemplateClick는 false
+        // 텍스트 입력, 키보드 입력, 포커스 아웃 이벤트를 감지합니다.
+        textarea.addEventListener('input', (e) => this.handleTextareaInput(e, false));
+        textarea.addEventListener('keydown', (e) => this.handleKeyDown(e));
+        textarea.addEventListener('blur', () => this.hideAutocomplete());
+        
         deleteBtn.addEventListener('click', () => window.blockManager.removeBlock(this.id));
         
         const templateContainer = element.querySelector('.template-container');
@@ -68,6 +82,7 @@ class PromptBlock {
             templateContainer.addEventListener('click', (e) => this.handleTemplateClick(e));
         }
 
+        // 드래그 앤 드롭 관련 이벤트를 설정합니다.
         element.addEventListener('dragstart', (e) => {
             e.dataTransfer.setData('text/plain', this.id);
             element.classList.add('dragging');
@@ -75,7 +90,7 @@ class PromptBlock {
         element.addEventListener('dragend', () => element.classList.remove('dragging'));
     }
 
-    // 템플릿 버튼 클릭 핸들러
+    // 템플릿 버튼을 클릭했을 때의 동작을 처리합니다.
     handleTemplateClick(e) {
         const clickedBtn = e.target.closest('.template-btn');
         if (!clickedBtn) return;
@@ -107,20 +122,32 @@ class PromptBlock {
             }
         }
         
-        // ✨ 수정: 템플릿 클릭으로 인한 업데이트임을 명시
-        this.handleTextareaInput({ target: textarea }, true); // isTemplateClick를 true로 전달
+        this.handleTextareaInput({ target: textarea }, true);
         textarea.focus();
     }
     
-    // ✨ 수정: 텍스트 영역 입력 핸들러에 isTemplateClick 파라미터 추가
+    // 사용자가 텍스트를 입력할 때마다 호출됩니다.
     handleTextareaInput(e, isTemplateClick = false) {
         this.content = e.target.value;
         this.autoResize(e);
-        if (window.blockManager) {
-            window.blockManager.updatePreview();
+        window.blockManager.updatePreview();
+
+        // 자동완성 기능을 활성화할지 결정하는 로직입니다.
+        const cursorPos = e.target.selectionStart;
+        const textBeforeCursor = this.content.substring(0, cursorPos);
+        // 사용자가 '<' 다음에 영문/숫자를 입력하는 패턴을 찾습니다.
+        const triggerMatch = textBeforeCursor.match(/<([a-zA-Z0-9]*)$/);
+
+        if (triggerMatch) {
+            this.autocomplete.active = true;
+            this.autocomplete.triggerIndex = triggerMatch.index;
+            const query = triggerMatch[1];
+            this.showAutocomplete(query, e.target);
+        } else {
+            this.hideAutocomplete();
         }
 
-        // ✨ 수정: 사용자가 직접 입력했을 때만 (isTemplateClick가 false일 때) 하이라이트 해제
+        // 사용자가 직접 타이핑한 경우, 활성화된 템플릿 버튼의 하이라이트를 해제합니다.
         if (!isTemplateClick && !this.preset.allowMultiple) {
             const blockElement = document.querySelector(`[data-block-id="${this.id}"]`);
             if(blockElement) {
@@ -129,14 +156,140 @@ class PromptBlock {
         }
     }
 
+    // 텍스트 내용에 따라 입력창의 높이를 자동으로 조절합니다.
     autoResize(e) {
         e.target.style.height = 'auto';
         e.target.style.height = (e.target.scrollHeight) + 'px';
     }
 
+    // 이 블록의 내용을 XML 형식으로 변환합니다.
     toXML() {
         if (!this.content.trim()) return `<${this.tagName}></${this.tagName}>`;
         return `<${this.tagName}>\n${this.content}\n</${this.tagName}>`;
+    }
+
+    // --- 자동완성 기능 관련 메서드들 ---
+
+	/**
+     * 자동완성 추천 창을 화면에 표시합니다.
+     * @param {string} query - 사용자가 입력한 검색어 (예: 'th')
+     * @param {HTMLTextAreaElement} textarea - 현재 텍스트를 입력 중인 요소
+     */
+    showAutocomplete(query, textarea) {
+        const allTags = window.PromptEditor.getAllTags();
+        const suggestions = allTags.filter(tag => tag.startsWith(query.toLowerCase()));
+        this.autocomplete.suggestions = suggestions;
+
+        if (suggestions.length === 0) {
+            this.hideAutocomplete();
+            return;
+        }
+
+        // 자동완성 창 요소가 없으면 새로 생성합니다.
+        if (!this.autocomplete.element) {
+            this.autocomplete.element = document.createElement('div');
+            this.autocomplete.element.className = 'autocomplete-suggestions';
+            const parentBlock = document.querySelector(`[data-block-id="${this.id}"]`);
+            parentBlock.appendChild(this.autocomplete.element);
+        }
+        
+        // 추천 목록으로 내용을 채웁니다.
+        this.autocomplete.element.innerHTML = suggestions.map((tag, index) => 
+            `<div data-index="${index}">${tag}</div>`
+        ).join('');
+
+        // 텍스트 커서 위치에 맞춰 자동완성 창의 위치를 계산합니다.
+        const lineHeight = parseFloat(getComputedStyle(textarea).lineHeight);
+        const lines = textarea.value.substring(0, this.autocomplete.triggerIndex).split('\n').length;
+        const top = textarea.offsetTop + (lines * lineHeight) + 5;
+        const left = textarea.offsetLeft + 10; // 약간의 여백
+
+        this.autocomplete.element.style.top = `${top}px`;
+        this.autocomplete.element.style.left = `${left}px`;
+        
+        // ✨ 개선: 첫 번째 항목을 기본으로 선택된 상태로 설정합니다.
+        // 이렇게 하면 사용자는 바로 Enter를 눌러 첫 항목을 선택할 수 있습니다.
+        // 시각적인 하이라이트는 방향키를 누르기 전까지는 적용되지 않아 깜빡임이 없습니다.
+        this.autocomplete.activeIndex = 0;
+        
+        // 추천 항목 클릭 이벤트를 설정합니다.
+        this.autocomplete.element.addEventListener('mousedown', (e) => {
+            e.preventDefault(); // 클릭 시 텍스트 입력창의 포커스가 사라지는 것을 방지
+            const target = e.target.closest('div[data-index]');
+            if (target) {
+                this.selectAutocomplete(parseInt(target.dataset.index), textarea);
+            }
+        });
+    }
+    // 자동완성 창을 화면에서 숨깁니다.
+    hideAutocomplete() {
+        if (this.autocomplete.element) {
+            this.autocomplete.element.remove();
+            this.autocomplete.element = null;
+        }
+        this.autocomplete.active = false;
+        this.autocomplete.activeIndex = -1;
+    }
+
+    // 텍스트 입력 중 키보드 입력을 처리합니다. (방향키, Enter, Esc 등)
+    handleKeyDown(e) {
+        if (!this.autocomplete.active) return;
+
+        // 특정 키 입력 시 브라우저의 기본 동작을 막습니다. (예: Enter 입력 시 줄바꿈 방지)
+        if (['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)) {
+            e.preventDefault();
+        }
+
+        switch(e.key) {
+            case 'ArrowDown':
+                this.autocomplete.activeIndex = (this.autocomplete.activeIndex + 1) % this.autocomplete.suggestions.length;
+                this.updateActiveSuggestion();
+                break;
+            case 'ArrowUp':
+                this.autocomplete.activeIndex = (this.autocomplete.activeIndex - 1 + this.autocomplete.suggestions.length) % this.autocomplete.suggestions.length;
+                this.updateActiveSuggestion();
+                break;
+            case 'Enter':
+            case 'Tab':
+                if (this.autocomplete.activeIndex !== -1) {
+                    this.selectAutocomplete(this.autocomplete.activeIndex, e.target);
+                }
+                break;
+            case 'Escape':
+                this.hideAutocomplete();
+                break;
+        }
+    }
+
+    // 현재 선택된 추천 항목에 하이라이트 효과를 줍니다.
+    updateActiveSuggestion() {
+        if (!this.autocomplete.element) return;
+        const suggestions = this.autocomplete.element.querySelectorAll('div');
+        suggestions.forEach((div, index) => {
+            div.classList.toggle('active', index === this.autocomplete.activeIndex);
+        });
+        // 선택된 항목이 창 밖으로 나가지 않도록 스크롤을 조절합니다.
+        suggestions[this.autocomplete.activeIndex]?.scrollIntoView({ block: 'nearest' });
+    }
+
+    // 사용자가 추천 항목을 선택했을 때의 동작을 처리합니다.
+    selectAutocomplete(index, textarea) {
+        const selectedTag = this.autocomplete.suggestions[index];
+        const textBefore = this.content.substring(0, this.autocomplete.triggerIndex);
+        const textAfter = this.content.substring(textarea.selectionStart);
+
+        // 개선: 선택된 태그에 닫는 괄호 '>'를 추가하여 삽입합니다.
+        const newContent = `${textBefore}<${selectedTag}>`;
+        textarea.value = newContent + textAfter;
+        this.content = textarea.value;
+
+        // 커서 위치를 삽입된 태그 바로 뒤로 이동시킵니다.
+        const newCursorPos = newContent.length;
+        textarea.focus();
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+        
+        this.hideAutocomplete();
+        window.blockManager.updatePreview();
     }
 }
 
