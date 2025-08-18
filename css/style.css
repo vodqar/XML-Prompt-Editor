@@ -223,9 +223,10 @@ body {
 
 .credit-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.8rem;
+    flex-direction: column; /* 세로로 쌓기 */
+    align-items: left;   /* 가로 중앙 정렬 */
+    gap: 0.5rem;           /* 위아래 요소 사이에 간격 추가 */
+    margin-bottom: 1rem;   /* 아래 링크와의 간격 조정 */
 }
 
 .credit-header .license {
@@ -253,9 +254,44 @@ body {
     color: #2980b9;
 }
 
-.license-note {
-    font-size: 0.75rem;
-    color: #95a5a6;
+/* Credit 섹션 스타일 (MIT 라이선스 버전) */
+.credits-section {
+    margin-top: auto; /* 사이드바 하단에 고정 */
+    padding: 1.5rem 0 0.5rem;
+    border-top: 1px solid #e9ecef;
+    text-align: center; /* 모든 텍스트를 중앙 정렬 */
+}
+
+.developer-info {
+    font-size: 0.9rem;
+    color: #343a40;
+    margin-bottom: 0.8rem;
+}
+
+.credit-links {
+    display: flex;
+    justify-content: center; /* 링크들을 중앙에 배치 */
+    gap: 1.5rem; /* 링크 사이 간격 */
+    margin-bottom: 1rem;
+}
+
+.credit-links a {
+    color: #3498db;
+    text-decoration: none;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+}
+
+.credit-links a:hover {
+    color: #2980b9;
+}
+
+.license-info {
+    font-size: 0.8rem;
+    color: #95a5a6; /* 라이선스 정보는 약간 연한 색으로 */
 }
 
 /* 편집 영역 스타일 */
@@ -679,12 +715,6 @@ body {
     to { opacity: 1; transform: translateY(0); }
 }
 
-.prompt-block.dragging {
-    opacity: 0.5;
-    transform: rotate(2deg);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-}
-
 /* ===================================
    템플릿 버튼 스타일 (v2)
 =================================== */
@@ -726,4 +756,31 @@ body {
     border-color: #667eea;
     font-weight: 600;
     box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+/* ===================================
+   SortableJS 드래그 앤 드롭 스타일
+=================================== */
+
+/* 드래그가 시작될 때 원래 있던 자리를 표시 (반투명) */
+/* 드래그하는 동안 커서를 따라다니는 블록 */
+.prompt-block.sortable-chosen {
+	cursor: grabbing;
+	box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+	transform: scale(1.02);
+	border-color: #764ba2;
+}
+.prompt-block.sortable-ghost {
+    opacity: 0.9;
+	background: #f0f5ff;
+	border: 2px dashed #a0bffa;
+	color: transparent; /* 내부 텍스트 숨기기 */
+}
+
+.prompt-block.sortable-ghost * {
+	visibility: hidden;
+}
+
+/* 드래그하는 동안 커서를 따라다니는 블록 스타일 */
+.prompt-block.sortable-chosen {
+    cursor: grabbing; /* 잡고 있다는 표시 */
 }

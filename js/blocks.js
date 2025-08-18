@@ -28,7 +28,6 @@ class PromptBlock {
         const blockElement = document.createElement('div');
         blockElement.className = 'prompt-block';
         blockElement.setAttribute('data-block-id', this.id);
-        blockElement.draggable = true;
 
         const icon = this.preset ? `<i class="${this.preset.icon}"></i>` : '<i class="fas fa-tag"></i>';
         const placeholder = this.preset ? this.preset.placeholder : '내용을 입력하세요...';
@@ -81,13 +80,6 @@ class PromptBlock {
         if (templateContainer) {
             templateContainer.addEventListener('click', (e) => this.handleTemplateClick(e));
         }
-
-        // 드래그 앤 드롭 관련 이벤트를 설정합니다.
-        element.addEventListener('dragstart', (e) => {
-            e.dataTransfer.setData('text/plain', this.id);
-            element.classList.add('dragging');
-        });
-        element.addEventListener('dragend', () => element.classList.remove('dragging'));
     }
 
     // 템플릿 버튼을 클릭했을 때의 동작을 처리합니다.
@@ -311,8 +303,20 @@ class BlockManagerClass {
             console.error('필수 DOM 요소를 찾을 수 없습니다.');
             return false;
         }
-        this.setupDragAndDrop();
         this.updateDisplay();
+		// --- 이 부분을 새로 추가하세요 ---
+		new Sortable(this.container, {
+			animation: 150, // 블록이 자리를 바꿀 때 부드러운 애니메이션 효과
+			handle: '.move', // '.move' 클래스가 있는 요소(이동 버튼)를 잡아야만 드래그 가능
+			onEnd: (evt) => {
+				// 드래그가 끝났을 때 호출됨
+				// 화면에 보이는 순서대로 blocks 배열을 다시 정렬합니다.
+				const movedItem = this.blocks.splice(evt.oldIndex, 1)[0];
+				this.blocks.splice(evt.newIndex, 0, movedItem);
+				this.updatePreview(); // 순서가 바뀌었으니 미리보기를 업데이트합니다.
+			}
+		});
+		// --- 여기까지 ---		
         return true;
     }
     addBlock(tagName, content = '') {
@@ -367,44 +371,6 @@ class BlockManagerClass {
     renderAllBlocks() {
         this.container.innerHTML = '';
         this.blocks.forEach(block => this.renderBlock(block));
-    }
-    setupDragAndDrop() {
-        this.container.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            const draggingElement = this.container.querySelector('.dragging');
-            if (!draggingElement) return;
-            const afterElement = this.getDragAfterElement(this.container, e.clientY);
-            if (afterElement == null) {
-                this.container.appendChild(draggingElement);
-            } else {
-                this.container.insertBefore(draggingElement, afterElement);
-            }
-        });
-        this.container.addEventListener('drop', (e) => {
-            e.preventDefault();
-            this.updateBlockOrder();
-        });
-    }
-    getDragAfterElement(container, y) {
-        const draggableElements = [...container.querySelectorAll('.prompt-block:not(.dragging)')];
-        return draggableElements.reduce((closest, child) => {
-            const box = child.getBoundingClientRect();
-            const offset = y - box.top - box.height / 2;
-            if (offset < 0 && offset > closest.offset) {
-                return { offset: offset, element: child };
-            } else {
-                return closest;
-            }
-        }, { offset: Number.NEGATIVE_INFINITY }).element;
-    }
-    updateBlockOrder() {
-        const elements = [...this.container.querySelectorAll('.prompt-block')];
-        const newOrder = elements.map(el => {
-            const blockId = el.getAttribute('data-block-id');
-            return this.blocks.find(block => block.id === blockId);
-        }).filter(Boolean);
-        this.blocks = newOrder;
-        this.updatePreview();
     }
     updateDisplay() {
         if (this.blocks.length === 0) {
