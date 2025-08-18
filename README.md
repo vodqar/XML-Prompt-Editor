@@ -31,13 +31,4 @@ https://vodqar.github.io/XML-Prompt-Editor/
 
 ## **📜 License**
 
-This project is licensed under the **CC BY-NC-ND 4.0** License.
-
-* **BY (Attribution)**: You must give appropriate credit.  
-* **NC (Non-Commercial)**: You may not use the material for commercial purposes.  
-* **ND (No Derivatives)**: If you remix, transform, or build upon the material, you may not distribute the modified material.
-
-\[\]\[cc-by-nc-nd\]  
-\[\]: \#  
-\[cc-by-nc-nd\]: http://creativecommons.org/licenses/by-nc-nd/4.0/-image\]\]\[cc-by-nc-nd\]  
-\[cc-by-nc-nd\]:
+This project is licensed under the MIT License.
