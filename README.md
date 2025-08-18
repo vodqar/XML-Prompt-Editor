@@ -1,4 +1,4 @@
-### Currently supported only korean.
+### Currently only Korean language is supported.
 
 # **XML 프롬프트 에디터**
 
