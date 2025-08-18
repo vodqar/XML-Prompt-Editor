@@ -1,3 +1,5 @@
+### Currently supported only korean.
+
 # **XML 프롬프트 에디터**
 
 AI 프롬프트를 XML 형식으로 손쉽게 작성하고 관리할 수 있는 웹 기반 에디터입니다.
