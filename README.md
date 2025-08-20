@@ -1,31 +1,29 @@
-### Currently only Korean language is supported.
+# ** xml prompt editor **
 
-# **XML 프롬프트 에디터**
+It is a web -based editor that allows you to easily create and manage AI prompt in XML format.
 
-AI 프롬프트를 XML 형식으로 손쉽게 작성하고 관리할 수 있는 웹 기반 에디터입니다.
+### ** ✨ Main function **
 
-### **✨ 주요 기능**
+*** Block -based editing **: You can add, edit, or delete each element of the prompt in a block unit.  
+***Drag and drop **: You can freely change the order of the block to the mouse.  
+***You can add frequently used tags such as tag presets **: Role, Instructions, etc.  
+*** Real -time preview **: Edit content is immediately converted into an XML format and displayed.  
+** ** Reactive design **: Provides optimized screen on all devices such as desktops, tablets, and mobile.
 
-* **블록 기반 편집**: 프롬프트의 각 요소를 블록 단위로 추가, 편집, 삭제할 수 있습니다.  
-* **드래그 앤 드롭**: 블록의 순서를 마우스로 자유롭게 변경할 수 있습니다.  
-* **태그 프리셋**: role, instructions 등 자주 사용하는 태그를 클릭 한 번으로 추가할 수 있습니다.  
-* **실시간 미리보기**: 편집하는 내용이 즉시 XML 형식으로 변환되어 표시됩니다.  
-* **반응형 디자인**: 데스크톱, 태블릿, 모바일 등 모든 기기에서 최적화된 화면을 제공합니다.
+### ** 🚀 Try **
 
-### **🚀 사용해보기**
+** LIVE DEMO: ** [https://vodqar.github.io/xml-prompt-editor
 
-* **Live Demo:** [https://vodqar.github.io/XML-Prompt-Editor/](https://vodqar.github.io/XML-Prompt-Editor/)
-
-### **🛠️ 기술 스택**
+### ** 🛠️ Technology Stack **
 
 * HTML5, CSS3, JavaScript (Vanilla JS)
 
-### **👨‍💻 개발자**
+### ** 👨‍💻 Developer **
 
-* **vodqar**  
-* **Email:** mbk7990@gmail.com  
-* **GitHub:** [https://github.com/vodqar](https://github.com/vodqar)
+** vodqar **  
+** email: ** mbk7990@gmail.com  
+** github: ** [https://github.com/vodqar
 
-### **📜 라이선스**
+### ** 📜 License **
 
-* This project is licensed under the **MIT License**.
+*This project is licended under the ** mit license **.
