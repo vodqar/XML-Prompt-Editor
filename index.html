@@ -3,76 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XML 프롬프트 에디터</title>
+    <title>XML Prompt Editor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
     <link rel="stylesheet" href="css/style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <button class="hamburger-btn" id="hamburgerBtn" title="태그 프리셋 메뉴 열기">
-        <i class="fas fa-bars"></i>
-    </button>
-    
-    <button class="floating-preview-btn" id="floatingPreviewBtn" title="미리보기 패널 열기">
-        <i class="fas fa-eye"></i>
-    </button>
+    <!-- 플로팅 햄버거 버튼은 삭제됩니다. -->
     
     <div class="overlay" id="overlay"></div>
     
     <div class="container">
         <header class="header">
-            <h1><i class="fas fa-code"></i> XML 프롬프트 에디터</h1>
+            <!-- 모바일 전용 메뉴 버튼 (헤더에 통합) -->
+            <button class="header-menu-btn" id="headerMenuBtn" data-i18n-key="sidebar_menu_tooltip" data-i18n-target="title">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <h1 data-i18n-key="app_title"><i class="fas fa-code"></i> </h1>
+            
             <div class="header-actions">
-                <button id="clearAllBtn" class="btn btn-secondary" title="모든 블록 삭제 (Ctrl+N)">
-                    <i class="fas fa-trash-alt"></i> 모두 삭제
+                <div class="language-switcher">
+                    <button class="btn btn-secondary" id="langBtn" title="Change Language">
+                        <i class="fas fa-globe"></i>
+                    </button>
+                    <div class="language-dropdown" id="langDropdown">
+                        <a href="#" class="lang-option" data-lang="ko">한국어</a>
+                        <a href="#" class="lang-option" data-lang="en">English</a>
+                    </div>
+                </div>
+                <button id="clearAllBtn" class="btn btn-secondary" data-i18n-key="clear_all_tooltip" data-i18n-target="title">
+                    <i class="fas fa-trash-alt"></i> <span data-i18n-key="clear_all_button"></span>
                 </button>
-                <button id="copyBtnHeader" class="btn btn-primary" title="XML 형식으로 복사 (Ctrl+S)">
-                    <i class="fas fa-copy"></i> 복사
+                <button id="copyBtnHeader" class="btn btn-primary" data-i18n-key="copy_xml_tooltip" data-i18n-target="title">
+                    <i class="fas fa-copy"></i> <span data-i18n-key="copy_button"></span>
                 </button>
             </div>
         </header>
 
         <div class="main-content">
             <aside class="sidebar" id="sidebar">
-                <h3><i class="fas fa-tags"></i> 태그 프리셋</h3>
-                
-                <div class="preset-divider"></div>
-                
-                <div class="preset-category">
-                    <h4>기본 구조</h4>
-                    <div class="preset-buttons">
-                        <button class="preset-btn" data-tag="role" title="AI의 역할과 전문성 정의">
-                            <i class="fas fa-user"></i> Role
-                        </button>
-                        <button class="preset-btn" data-tag="instructions" title="구체적인 작업 지시사항">
-                            <i class="fas fa-list"></i> Instructions
-                        </button>
-                        <button class="preset-btn" data-tag="context" title="배경 정보와 상황 설명">
-                            <i class="fas fa-info-circle"></i> Context
-                        </button>
-                        <button class="preset-btn" data-tag="examples" title="입출력 예시 (Few-shot)">
-                            <i class="fas fa-lightbulb"></i> Examples
-                        </button>
-                    </div>
-                </div>
-
-                <div class="preset-category">
-                    <h4>고급 태그</h4>
-                    <div class="preset-buttons">
-                        <button class="preset-btn" data-tag="thinking" title="사고 과정 요청 (CoT)">
-                            <i class="fas fa-brain"></i> Thinking
-                        </button>
-                        <button class="preset-btn" data-tag="format" title="출력 형식 지정">
-                            <i class="fas fa-align-left"></i> Format
-                        </button>
-                        <button class="preset-btn" data-tag="constraints" title="제약조건과 규칙">
-                            <i class="fas fa-exclamation-triangle"></i> Constraints
-                        </button>
-                        <button class="preset-btn" data-tag="output" title="최종 출력 요구사항">
-                            <i class="fas fa-arrow-right"></i> Output
-                        </button>
-                    </div>
-                </div>
-
+                <h3 data-i18n-key="sidebar_title"><i class="fas fa-tags"></i> </h3>
 				<div class="credits-section">
 					<p class="developer-info">
 						<strong>Developed by vodqar</strong>
@@ -93,64 +65,62 @@
 
             <main class="editor-area">
                 <div class="editor-header">
-                    <h3><i class="fas fa-edit"></i> 프롬프트 편집기</h3>
+                    <h3 data-i18n-key="editor_title"><i class="fas fa-edit"></i> </h3>
+                    <div class="view-switcher">
+                        <div class="switcher-background"></div>
+                        <button id="view-edit-btn" class="switcher-btn active" data-i18n-key="view_switcher_edit"></button>
+                        <button id="view-preview-btn" class="switcher-btn" data-i18n-key="view_switcher_preview"></button>
+                    </div>
                     <div class="editor-actions">
-                        <button id="addBlockBtn" class="btn btn-small" title="새 블록 추가">
-                            <i class="fas fa-plus"></i> 블록 추가
+                        <button id="addBlockBtn" class="btn btn-small" data-i18n-key="add_block_tooltip" data-i18n-target="title">
+                            <i class="fas fa-plus"></i> <span data-i18n-key="add_block_button"></span>
                         </button>
                     </div>
                 </div>
 
                 <div class="inline-block-add" id="inlineBlockAdd">
-                    <div class="inline-add-container">
+                     <div class="inline-add-container">
                         <input 
                             type="text" 
                             id="inlineAddInput" 
                             class="inline-add-input" 
-                            placeholder="새 태그 이름을 입력하세요 (예: task, goal, summary...)"
+                            data-i18n-key="new_tag_placeholder"
+                            data-i18n-target="placeholder"
                             autocomplete="off"
                             aria-label="새 블록 태그 입력"
                         >
                         <div class="inline-add-actions">
-                            <button id="inlineAddConfirm" class="inline-add-btn inline-add-confirm" title="블록 추가 (Enter)">
+                            <button id="inlineAddConfirm" class="inline-add-btn inline-add-confirm" data-i18n-key="new_tag_confirm_tooltip" data-i18n-target="title">
                                 <i class="fas fa-check"></i>
                             </button>
-                            <button id="inlineAddCancel" class="inline-add-btn inline-add-cancel" title="취소 (ESC)">
+                            <button id="inlineAddCancel" class="inline-add-btn inline-add-cancel" data-i18n-key="new_tag_cancel_tooltip" data-i18n-target="title">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <div id="blockContainer" class="block-container">
+                <div class="view-container">
+                    <div id="edit-view" class="view active">
+                        <div id="blockContainer" class="block-container">
+                        </div>
+                        <div class="empty-state" id="emptyState">
+                            <i class="fas fa-cube"></i>
+                            <h4 data-i18n-key="empty_state_title"></h4>
+                            <p data-i18n-key="empty_state_description"></p>
+                        </div>
                     </div>
-
-                <div class="empty-state" id="emptyState">
-                    <i class="fas fa-cube"></i>
-                    <h4>프롬프트 블록을 추가해보세요</h4>
-                    <p>좌측 프리셋에서 태그를 선택하거나 직접 블록을 추가하세요</p>
+                    <div id="preview-view" class="view">
+                        <div class="preview-content-inline">
+                            <pre id="previewCode"></pre>
+                        </div>
+                    </div>
                 </div>
             </main>
-
-            <aside class="preview-area" id="previewArea">
-                <div class="preview-header">
-                    <h3><i class="fas fa-eye"></i> 미리보기</h3>
-                    <div class="preview-actions">
-                        <button id="copyBtn" class="btn btn-small" title="클립보드에 복사 (Ctrl+C)">
-                            <i class="fas fa-copy"></i> 복사
-                        </button>
-                        <button id="previewCloseBtn" class="preview-close-btn" title="미리보기 닫기">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="preview-content">
-                    <pre id="previewCode"></pre>
-                </div>
-            </aside>
         </div>
     </div>
 
+    <script src="js/i18n.js"></script> 
     <script src="js/presets.js"></script>
     <script src="js/blocks.js"></script>
     <script src="js/app.js"></script>

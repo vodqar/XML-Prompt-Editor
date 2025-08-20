@@ -30,9 +30,14 @@ class PromptBlock {
         blockElement.setAttribute('data-block-id', this.id);
 
         const icon = this.preset ? `<i class="${this.preset.icon}"></i>` : '<i class="fas fa-tag"></i>';
-        const placeholder = this.preset ? this.preset.placeholder : '내용을 입력하세요...';
+        
+        // 1. i18n을 통해 placeholder 텍스트를 가져옵니다.
+        const placeholderText = this.preset ? i18n.t(this.preset.placeholderKey) : i18n.t('default_block_placeholder');
+        // 2. 텍스트 안의 \n(줄바꿈 문자)을 HTML placeholder가 인식하는 &#10;으로 변경합니다.
+        const placeholder = placeholderText.replace(/\\n/g, '&#10;');
         
         const templatesHTML = this.createTemplatesHTML();
+
 
         blockElement.innerHTML = `
             <div class="block-header">
@@ -41,8 +46,8 @@ class PromptBlock {
                     <span>&lt;${this.tagName}&gt;</span>
                 </div>
                 <div class="block-actions">
-                    <button class="block-btn move" title="이동"><i class="fas fa-grip-vertical"></i></button>
-                    <button class="block-btn delete" title="삭제"><i class="fas fa-trash"></i></button>
+                    <button class="block-btn move" title="Move"><i class="fas fa-grip-vertical"></i></button>
+                    <button class="block-btn delete" title="Delete"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
             <div class="block-content">
@@ -58,8 +63,9 @@ class PromptBlock {
     // 프리셋에 정의된 템플릿 버튼들의 HTML을 생성합니다.
     createTemplatesHTML() {
         if (!this.preset || !this.preset.promptTemplates) return '';
+        // ✨ 변경점: labelKey를 사용해 버튼 이름을 가져옵니다.
         const buttonsHTML = this.preset.promptTemplates.map((template, index) => 
-            `<button class="template-btn" data-template-index="${index}">${template.label}</button>`
+            `<button class="template-btn" data-template-index="${index}">${i18n.t(template.labelKey)}</button>`
         ).join('');
         return `<div class="template-container">${buttonsHTML}</div>`;
     }
@@ -97,7 +103,7 @@ class PromptBlock {
             const activeTemplates = Array.from(templateContainer.querySelectorAll('.template-btn.active'))
                 .map(btn => {
                     const index = parseInt(btn.dataset.templateIndex);
-                    return this.preset.promptTemplates[index].value;
+                    return i18n.t(this.preset.promptTemplates[index].valueKey);
                 });
             
             textarea.value = activeTemplates.join('\n\n---\n\n');
@@ -110,7 +116,7 @@ class PromptBlock {
             } else {
                 clickedBtn.classList.add('active');
                 const index = parseInt(clickedBtn.dataset.templateIndex);
-                textarea.value = this.preset.promptTemplates[index].value;
+                textarea.value = i18n.t(this.preset.promptTemplates[index].valueKey);
             }
         }
         
@@ -161,59 +167,38 @@ class PromptBlock {
     }
 
     // --- 자동완성 기능 관련 메서드들 ---
-
-	/**
-     * 자동완성 추천 창을 화면에 표시합니다.
-     * @param {string} query - 사용자가 입력한 검색어 (예: 'th')
-     * @param {HTMLTextAreaElement} textarea - 현재 텍스트를 입력 중인 요소
-     */
     showAutocomplete(query, textarea) {
         const allTags = window.PromptEditor.getAllTags();
         const suggestions = allTags.filter(tag => tag.startsWith(query.toLowerCase()));
         this.autocomplete.suggestions = suggestions;
-
         if (suggestions.length === 0) {
             this.hideAutocomplete();
             return;
         }
-
-        // 자동완성 창 요소가 없으면 새로 생성합니다.
         if (!this.autocomplete.element) {
             this.autocomplete.element = document.createElement('div');
             this.autocomplete.element.className = 'autocomplete-suggestions';
             const parentBlock = document.querySelector(`[data-block-id="${this.id}"]`);
             parentBlock.appendChild(this.autocomplete.element);
         }
-        
-        // 추천 목록으로 내용을 채웁니다.
-        this.autocomplete.element.innerHTML = suggestions.map((tag, index) => 
+        this.autocomplete.element.innerHTML = suggestions.map((tag, index) =>
             `<div data-index="${index}">${tag}</div>`
         ).join('');
-
-        // 텍스트 커서 위치에 맞춰 자동완성 창의 위치를 계산합니다.
         const lineHeight = parseFloat(getComputedStyle(textarea).lineHeight);
         const lines = textarea.value.substring(0, this.autocomplete.triggerIndex).split('\n').length;
         const top = textarea.offsetTop + (lines * lineHeight) + 5;
-        const left = textarea.offsetLeft + 10; // 약간의 여백
-
+        const left = textarea.offsetLeft + 10;
         this.autocomplete.element.style.top = `${top}px`;
         this.autocomplete.element.style.left = `${left}px`;
-        
-        // ✨ 개선: 첫 번째 항목을 기본으로 선택된 상태로 설정합니다.
-        // 이렇게 하면 사용자는 바로 Enter를 눌러 첫 항목을 선택할 수 있습니다.
-        // 시각적인 하이라이트는 방향키를 누르기 전까지는 적용되지 않아 깜빡임이 없습니다.
         this.autocomplete.activeIndex = 0;
-        
-        // 추천 항목 클릭 이벤트를 설정합니다.
         this.autocomplete.element.addEventListener('mousedown', (e) => {
-            e.preventDefault(); // 클릭 시 텍스트 입력창의 포커스가 사라지는 것을 방지
+            e.preventDefault();
             const target = e.target.closest('div[data-index]');
             if (target) {
                 this.selectAutocomplete(parseInt(target.dataset.index), textarea);
             }
         });
     }
-    // 자동완성 창을 화면에서 숨깁니다.
     hideAutocomplete() {
         if (this.autocomplete.element) {
             this.autocomplete.element.remove();
@@ -222,16 +207,11 @@ class PromptBlock {
         this.autocomplete.active = false;
         this.autocomplete.activeIndex = -1;
     }
-
-    // 텍스트 입력 중 키보드 입력을 처리합니다. (방향키, Enter, Esc 등)
     handleKeyDown(e) {
         if (!this.autocomplete.active) return;
-
-        // 특정 키 입력 시 브라우저의 기본 동작을 막습니다. (예: Enter 입력 시 줄바꿈 방지)
         if (['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)) {
             e.preventDefault();
         }
-
         switch(e.key) {
             case 'ArrowDown':
                 this.autocomplete.activeIndex = (this.autocomplete.activeIndex + 1) % this.autocomplete.suggestions.length;
@@ -252,41 +232,28 @@ class PromptBlock {
                 break;
         }
     }
-
-    // 현재 선택된 추천 항목에 하이라이트 효과를 줍니다.
     updateActiveSuggestion() {
         if (!this.autocomplete.element) return;
         const suggestions = this.autocomplete.element.querySelectorAll('div');
         suggestions.forEach((div, index) => {
             div.classList.toggle('active', index === this.autocomplete.activeIndex);
         });
-        // 선택된 항목이 창 밖으로 나가지 않도록 스크롤을 조절합니다.
         suggestions[this.autocomplete.activeIndex]?.scrollIntoView({ block: 'nearest' });
     }
-
-    // 사용자가 추천 항목을 선택했을 때의 동작을 처리합니다.
     selectAutocomplete(index, textarea) {
         const selectedTag = this.autocomplete.suggestions[index];
         const textBefore = this.content.substring(0, this.autocomplete.triggerIndex);
         const textAfter = this.content.substring(textarea.selectionStart);
-
-        // 개선: 선택된 태그에 닫는 괄호 '>'를 추가하여 삽입합니다.
         const newContent = `${textBefore}<${selectedTag}>`;
         textarea.value = newContent + textAfter;
         this.content = textarea.value;
-
-        // 커서 위치를 삽입된 태그 바로 뒤로 이동시킵니다.
         const newCursorPos = newContent.length;
         textarea.focus();
         textarea.setSelectionRange(newCursorPos, newCursorPos);
-        
         this.hideAutocomplete();
         window.blockManager.updatePreview();
     }
 }
-
-
-// --- 이하 BlockManagerClass 코드는 변경사항 없습니다 ---
 
 class BlockManagerClass {
     constructor() {
@@ -304,19 +271,15 @@ class BlockManagerClass {
             return false;
         }
         this.updateDisplay();
-		// --- 이 부분을 새로 추가하세요 ---
 		new Sortable(this.container, {
-			animation: 150, // 블록이 자리를 바꿀 때 부드러운 애니메이션 효과
-			handle: '.move', // '.move' 클래스가 있는 요소(이동 버튼)를 잡아야만 드래그 가능
+			animation: 150,
+			handle: '.move',
 			onEnd: (evt) => {
-				// 드래그가 끝났을 때 호출됨
-				// 화면에 보이는 순서대로 blocks 배열을 다시 정렬합니다.
 				const movedItem = this.blocks.splice(evt.oldIndex, 1)[0];
 				this.blocks.splice(evt.newIndex, 0, movedItem);
-				this.updatePreview(); // 순서가 바뀌었으니 미리보기를 업데이트합니다.
+				this.updatePreview();
 			}
 		});
-		// --- 여기까지 ---		
         return true;
     }
     addBlock(tagName, content = '') {
@@ -391,7 +354,8 @@ class BlockManagerClass {
         return this.blocks.map(block => block.toXML()).join('\n\n');
     }
     clearProject() {
-        if (this.blocks.length > 0 && !confirm('모든 블록을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+        // ✨ 변경점: confirm 메시지를 i18n 함수로 가져옵니다.
+        if (this.blocks.length > 0 && !confirm(i18n.t('confirm_clear_all'))) {
             return;
         }
         this.blocks = [];
@@ -400,19 +364,46 @@ class BlockManagerClass {
     }
 }
 
+/**
+ * 화면 상단 중앙에 캡슐 형태의 알림을 표시합니다.
+ * @param {string} message - 표시할 메시지
+ * @param {string} [type='info'] - 알림 종류 ('success', 'error', 'info')
+ */
 function showNotification(message, type = 'info') {
+    // 이전 알림이 있다면 즉시 제거하여 중복을 방지합니다.
+    const existingNotification = document.querySelector('.notification-capsule');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+
+    // 새로운 알림 요소를 생성합니다.
     const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.textContent = message;
-    Object.assign(notification.style, {
-        position: 'fixed', top: '20px', right: '20px', padding: '1rem 1.5rem',
-        backgroundColor: type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#2196f3',
-        color: 'white', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        zIndex: '10000', animation: 'slideInFromRight 0.3s ease-out'
-    });
+    notification.className = `notification-capsule ${type}`; // 종류에 맞는 CSS 클래스 부여
+
+    // 알림 종류에 따라 적절한 아이콘을 추가합니다.
+    let icon = '';
+    if (type === 'success') {
+        icon = '<i class="fas fa-check-circle"></i>';
+    } else if (type === 'error') {
+        icon = '<i class="fas fa-times-circle"></i>';
+    }
+    notification.innerHTML = `${icon} <span>${message}</span>`;
+
+    // body에 알림을 추가하고, 'slide-in' 애니메이션을 실행합니다.
     document.body.appendChild(notification);
+    
+    // 강제로 리플로우를 발생시켜 애니메이션이 확실히 동작하도록 합니다.
+    void notification.offsetWidth; 
+    
+    notification.classList.add('show');
+
+    // 2.5초 후에 'slide-out' 애니메이션을 실행하고 DOM에서 제거합니다.
     setTimeout(() => {
-        notification.style.animation = 'slideOutToRight 0.3s ease-in';
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
+        notification.classList.remove('show');
+        
+        // 사라지는 애니메이션이 끝난 후 요소를 완전히 제거합니다.
+        notification.addEventListener('transitionend', () => {
+            notification.remove();
+        });
+    }, 2500);
 }
