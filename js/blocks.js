@@ -273,7 +273,8 @@ class BlockManagerClass {
         this.updateDisplay();
 		new Sortable(this.container, {
 			animation: 150,
-			handle: '.move',
+			handle: '.block-header',
+            filter: '.block-actions', 
 			onEnd: (evt) => {
 				const movedItem = this.blocks.splice(evt.oldIndex, 1)[0];
 				this.blocks.splice(evt.newIndex, 0, movedItem);
