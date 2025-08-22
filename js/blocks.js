@@ -354,14 +354,48 @@ class BlockManagerClass {
         if (this.blocks.length === 0) return '';
         return this.blocks.map(block => block.toXML()).join('\n\n');
     }
-    clearProject() {
-        // ✨ 변경점: confirm 메시지를 i18n 함수로 가져옵니다.
-        if (this.blocks.length > 0 && !confirm(i18n.t('confirm_clear_all'))) {
+    clearProject(confirmNeeded = true) {
+        if (confirmNeeded && this.blocks.length > 0 && !confirm(i18n.t('confirm_clear_all'))) {
             return;
         }
         this.blocks = [];
         this.container.innerHTML = '';
         this.updateDisplay();
+    }
+    /**
+     * XML 텍스트를 파싱하여 블록으로 변환하고 에디터에 추가합니다.
+     * 이 함수는 나중에 AI 생성 기능에서도 재사용될 수 있습니다.
+     * @param {string} xmlText - 변환할 XML 형식의 문자열
+     * @param {string} [option='append'] - 가져오기 옵션 ('append' 또는 'replace')
+     * @returns {number} 성공적으로 추가된 블록의 수
+     */
+    importFromXML(xmlText, option = 'append') {
+        // 간단한 정규식을 사용하여 <tag>content</tag> 쌍을 찾습니다.
+        const regex = /<([a-zA-Z0-9]+)>([\s\S]*?)<\/\1>/g;
+        const blocksData = [];
+        let match;
+        while ((match = regex.exec(xmlText)) !== null) {
+            blocksData.push({
+                tagName: match[1].trim(),
+                content: match[2].trim()
+            });
+        }
+
+        if (blocksData.length === 0) {
+            return 0; // 변환할 블록이 없음
+        }
+
+        if (option === 'replace') {
+            // 'replace' 옵션일 경우, 확인창 없이 모든 블록을 조용히 삭제합니다.
+            this.clearProject(false);
+        }
+
+        // 추출된 데이터를 기반으로 블록을 생성합니다.
+        blocksData.forEach(data => {
+            this.addBlock(data.tagName, data.content);
+        });
+
+        return blocksData.length;
     }
 }
 

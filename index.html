@@ -10,10 +10,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <!-- 플로팅 햄버거 버튼은 삭제됩니다. -->
-    
     <div class="overlay" id="overlay"></div>
-    
     <div class="container">
         <header class="header">
             <!-- 모바일 전용 메뉴 버튼 (헤더에 통합) -->
@@ -24,6 +21,9 @@
             <h1 data-i18n-key="app_title"><i class="fas fa-code"></i> </h1>
             
             <div class="header-actions">
+                <button id="settingsBtn" class="btn btn-secondary" data-i18n-key="settings_button_tooltip" data-i18n-target="title">
+                    <i class="fas fa-cog"></i>
+                </button>
                 <div class="language-switcher">
                     <button class="btn btn-secondary" id="langBtn" title="Change Language">
                         <i class="fas fa-globe"></i>
@@ -33,6 +33,9 @@
                         <a href="#" class="lang-option" data-lang="en">English</a>
                     </div>
                 </div>
+                <button id="importBtn" class="btn btn-secondary" data-i18n-key="import_button_tooltip" data-i18n-target="title">
+                    <i class="fas fa-file-import"></i>
+                </button>                
                 <button id="clearAllBtn" class="btn btn-secondary" data-i18n-key="clear_all_tooltip" data-i18n-target="title">
                     <i class="fas fa-trash-alt"></i> <span data-i18n-key="clear_all_button"></span>
                 </button>
@@ -71,6 +74,11 @@
                         <button id="view-edit-btn" class="switcher-btn active" data-i18n-key="view_switcher_edit"></button>
                         <button id="view-preview-btn" class="switcher-btn" data-i18n-key="view_switcher_preview"></button>
                     </div>
+                    <!-- AI 생성 버튼 추가 -->
+                    <button id="aiGenerateBtn" class="btn btn-ai" data-i18n-key="ai_generate_button" data-i18n-target="title">
+                        <i class="fas fa-magic-wand-sparkles"></i>
+                        <span data-i18n-key="ai_generate_button"></span>
+                    </button>
                     <div class="editor-actions">
                         <button id="addBlockBtn" class="btn btn-small" data-i18n-key="add_block_tooltip" data-i18n-target="title">
                             <i class="fas fa-plus"></i> <span data-i18n-key="add_block_button"></span>
@@ -119,7 +127,38 @@
             </main>
         </div>
     </div>
-
+   <!-- 가져오기 모달 -->
+    <div id="importModal" class="modal-container">
+        <div class="modal-content">
+            <header class="modal-header">
+                <h3 class="modal-title" data-i18n-key="import_modal_title"></h3>
+                <button id="closeImportModalBtn" class="modal-close-btn">&times;</button>
+            </header>
+            <div class="modal-body">
+                <label for="xmlInput" class="modal-label" data-i18n-key="import_modal_label"></label>
+                <textarea id="xmlInput" class="modal-textarea" placeholder="<role>...</role>"></textarea>
+                <div id="validationFeedback" class="modal-feedback"></div>
+            </div>
+            <footer class="modal-footer">
+                <div class="modal-options">
+                     <label class="radio-label">
+                        <input type="radio" name="import-option" value="append" checked>
+                        <span data-i18n-key="import_option_append"></span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="import-option" value="replace">
+                        <span data-i18n-key="import_option_replace"></span>
+                    </label>
+                </div>
+                <div class="modal-actions">
+                    <button id="cancelImportBtn" class="btn btn-secondary" data-i18n-key="import_button_cancel"></button>
+                    <button id="applyImportBtn" class="btn btn-primary" data-i18n-key="import_button_apply" disabled></button>
+                </div>
+            </footer>
+        </div>
+    </div>
+    <div id="settingsModal" class="modal-container"></div>
+    <div id="aiModal" class="modal-container"></div>
     <script src="js/i18n.js"></script> 
     <script src="js/presets.js"></script>
     <script src="js/blocks.js"></script>
