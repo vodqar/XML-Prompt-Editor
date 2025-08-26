@@ -607,12 +607,6 @@ class PromptEditorApp {
         }
     }
     
-    getAllTags() {
-        const presetTags = TAG_PRESETS.flatMap(category => category.presets.map(p => p.key));
-        const customTags = this.blockManager.blocks.map(b => b.tagName);
-        return [...new Set([...presetTags, ...customTags])].sort();
-    }
-
     initInlineBlockAdd() {
         const inlineAddContainer = document.getElementById('inlineBlockAdd');
         const inlineAddInput = document.getElementById('inlineAddInput');

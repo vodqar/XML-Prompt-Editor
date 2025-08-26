@@ -1,260 +1,429 @@
-// 블록 관리 클래스
+// --- Constants ---
+const CSS_CLASSES = {
+    PROMPT_BLOCK: 'prompt-block',
+    BLOCK_HEADER: 'block-header',
+    BLOCK_TAG: 'block-tag',
+    BLOCK_ACTIONS: 'block-actions',
+    BLOCK_BTN: 'block-btn',
+    MOVE_BTN: 'move',
+    DELETE_BTN: 'delete',
+    BLOCK_CONTENT: 'block-content',
+    TEMPLATE_CONTAINER: 'template-container',
+    TEMPLATE_BTN: 'template-btn',
+    ACTIVE: 'active',
+    DEFAULT_ICON: 'fas fa-tag',
+    AUTOCOMPLETE_SUGGESTIONS: 'autocomplete-suggestions',
+    AUTOCOMPLETE_ITEM: 'autocomplete-item',
+    AUTOCOMPLETE_SHOW: 'show',
+    AUTOCOMPLETE_SELECTED: 'selected',
+    BLOCK_ENTERING: 'block-entering',
+    BLOCK_REMOVING: 'block-removing',
+    NOTIFICATION_CAPSULE: 'notification-capsule',
+};
+
+const KEY_CODES = {
+    ARROW_DOWN: 'ArrowDown',
+    ARROW_UP: 'ArrowUp',
+    ENTER: 'Enter',
+    TAB: 'Tab',
+    ESCAPE: 'Escape',
+};
+
+const ANIMATION_DURATIONS = {
+    BLOCK_ENTER: 500,
+    BLOCK_SCALE: 300,
+    BLOCK_HEIGHT: 350,
+    SORTABLE: 150,
+    NOTIFICATION_FADEOUT: 2500,
+    AUTOCOMPLETE_HIDE_DELAY: 200,
+};
+
+// --- PromptBlock Class ---
+/**
+ * Represents a single editable block in the prompt editor.
+ */
 class PromptBlock {
     constructor(tagName, content = '', id = null) {
-        this.id = id || this.generateId();
+        this.id = id || this._generateId();
         this.tagName = tagName;
         this.content = content;
-        
-        // 이 블록이 어떤 프리셋에 해당하는지 찾습니다. (없을 수도 있습니다)
+        this.element = null; // Cache the element
+        this.textarea = null; // Cache the textarea
+
+        // Find the corresponding preset for this block, if any.
         const allPresets = TAG_PRESETS.flatMap(category => category.presets);
         this.preset = allPresets.find(p => p.key === tagName) || null;
 
-        // 자동완성 기능의 상태를 관리하는 객체입니다.
+        // State for the autocomplete functionality.
         this.autocomplete = {
-            active: false,      // 자동완성 창이 활성화되었는지 여부
-            triggerIndex: -1,   // 자동완성이 시작된 텍스트 위치 (예: '<'의 위치)
-            activeIndex: -1,    // 현재 하이라이트된 추천 항목의 인덱스
-            suggestions: [],    // 추천 목록 배열
-            element: null       // 자동완성 창의 HTML 요소
+            active: false,
+            triggerIndex: -1,
+            activeIndex: -1,
+            suggestions: [],
+            element: null, // The autocomplete dropdown element
         };
     }
 
-    generateId() {
-        return 'block_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    /**
+     * Generates a unique ID for the block.
+     * @private
+     * @returns {string} A unique identifier.
+     */
+    _generateId() {
+        return `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
 
-    // 이 블록에 해당하는 HTML 요소를 생성합니다.
+    /**
+     * Creates the HTML element for this block.
+     * @returns {HTMLElement} The block's root element.
+     */
     createElement() {
         const blockElement = document.createElement('div');
-        blockElement.className = 'prompt-block';
+        blockElement.className = CSS_CLASSES.PROMPT_BLOCK;
         blockElement.setAttribute('data-block-id', this.id);
 
-        const icon = this.preset ? `<i class="${this.preset.icon}"></i>` : '<i class="fas fa-tag"></i>';
-        
-        // 1. i18n을 통해 placeholder 텍스트를 가져옵니다.
+        const iconClass = this.preset ? this.preset.icon : CSS_CLASSES.DEFAULT_ICON;
         const placeholderText = this.preset ? i18n.t(this.preset.placeholderKey) : i18n.t('default_block_placeholder');
-        // 2. 텍스트 안의 \n(줄바꿈 문자)을 HTML placeholder가 인식하는 &#10;으로 변경합니다.
-        const placeholder = placeholderText.replace(/\\n/g, '&#10;');
+        const placeholder = placeholderText.replace(/\n/g, '&#10;');
         
-        const templatesHTML = this.createTemplatesHTML();
-
+        const templatesHTML = this._createTemplatesHTML();
 
         blockElement.innerHTML = `
-            <div class="block-header">
-                <div class="block-tag">
-                    ${icon}
+            <div class="${CSS_CLASSES.BLOCK_HEADER}">
+                <div class="${CSS_CLASSES.BLOCK_TAG}">
+                    <i class="${iconClass}"></i>
                     <span>&lt;${this.tagName}&gt;</span>
                 </div>
-                <div class="block-actions">
-                    <button class="block-btn move" title="Move"><i class="fas fa-grip-vertical"></i></button>
-                    <button class="block-btn delete" title="Delete"><i class="fas fa-trash"></i></button>
+                <div class="${CSS_CLASSES.BLOCK_ACTIONS}">
+                    <button class="${CSS_CLASSES.BLOCK_BTN} ${CSS_CLASSES.MOVE_BTN}" title="Move"><i class="fas fa-grip-vertical"></i></button>
+                    <button class="${CSS_CLASSES.BLOCK_BTN} ${CSS_CLASSES.DELETE_BTN}" title="Delete"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
-            <div class="block-content">
+            <div class="${CSS_CLASSES.BLOCK_CONTENT}">
                 ${templatesHTML}
                 <textarea placeholder="${placeholder}" rows="4">${this.content}</textarea>
             </div>
         `;
-        // 생성된 HTML 요소에 필요한 이벤트들을 연결합니다.
-        this.attachEventListeners(blockElement);
+        
+        this.element = blockElement;
+        this.textarea = blockElement.querySelector('textarea');
+        
+        this._attachEventListeners();
         return blockElement;
     }
 
-    // 프리셋에 정의된 템플릿 버튼들의 HTML을 생성합니다.
-    createTemplatesHTML() {
+    /**
+     * Creates the HTML for template buttons, if applicable.
+     * @private
+     * @returns {string} The HTML string for the template container.
+     */
+    _createTemplatesHTML() {
         if (!this.preset || !this.preset.promptTemplates) return '';
-        // ✨ 변경점: labelKey를 사용해 버튼 이름을 가져옵니다.
+        
         const buttonsHTML = this.preset.promptTemplates.map((template, index) => 
-            `<button class="template-btn" data-template-index="${index}">${i18n.t(template.labelKey)}</button>`
+            `<button class="${CSS_CLASSES.TEMPLATE_BTN}" data-template-index="${index}">${i18n.t(template.labelKey)}</button>`
         ).join('');
-        return `<div class="template-container">${buttonsHTML}</div>`;
+        
+        return `<div class="${CSS_CLASSES.TEMPLATE_CONTAINER}">${buttonsHTML}</div>`;
     }
 
-    // HTML 요소에 각종 이벤트 리스너를 연결합니다.
-    attachEventListeners(element) {
-        const textarea = element.querySelector('textarea');
-        const deleteBtn = element.querySelector('.block-btn.delete');
+    /**
+     * Attaches event listeners to the block's element.
+     * @private
+     */
+    _attachEventListeners() {
+        const deleteBtn = this.element.querySelector(`.${CSS_CLASSES.DELETE_BTN}`);
 
-        // 텍스트 입력, 키보드 입력, 포커스 아웃 이벤트를 감지합니다.
-        textarea.addEventListener('input', (e) => this.handleTextareaInput(e, false));
-        textarea.addEventListener('keydown', (e) => this.handleKeyDown(e));
-        textarea.addEventListener('blur', () => this.hideAutocomplete());
+        this.textarea.addEventListener('input', (e) => this._handleTextareaInput(e));
+        this.textarea.addEventListener('keydown', (e) => this._handleKeyDown(e));
+        this.textarea.addEventListener('blur', () => this._hideAutocomplete());
         
         deleteBtn.addEventListener('click', () => window.blockManager.removeBlock(this.id));
         
-        const templateContainer = element.querySelector('.template-container');
+        const templateContainer = this.element.querySelector(`.${CSS_CLASSES.TEMPLATE_CONTAINER}`);
         if (templateContainer) {
-            templateContainer.addEventListener('click', (e) => this.handleTemplateClick(e));
+            templateContainer.addEventListener('click', (e) => this._handleTemplateClick(e));
         }
     }
 
-    // 템플릿 버튼을 클릭했을 때의 동작을 처리합니다.
-    handleTemplateClick(e) {
-        const clickedBtn = e.target.closest('.template-btn');
+    /**
+     * Handles clicks on template buttons.
+     * @private
+     * @param {MouseEvent} e - The click event.
+     */
+    _handleTemplateClick(e) {
+        const clickedBtn = e.target.closest(`.${CSS_CLASSES.TEMPLATE_BTN}`);
         if (!clickedBtn) return;
 
-        const textarea = clickedBtn.closest('.block-content').querySelector('textarea');
         const templateContainer = clickedBtn.parentElement;
         const allowMultiple = this.preset.allowMultiple || false;
 
         if (allowMultiple) {
-            clickedBtn.classList.toggle('active');
-            
-            const activeTemplates = Array.from(templateContainer.querySelectorAll('.template-btn.active'))
-                .map(btn => {
-                    const index = parseInt(btn.dataset.templateIndex);
-                    return i18n.t(this.preset.promptTemplates[index].valueKey);
-                });
-            
-            textarea.value = activeTemplates.join('\n\n---\n\n');
+            this._toggleMultipleTemplate(clickedBtn, templateContainer);
         } else {
-            const isActive = clickedBtn.classList.contains('active');
-            templateContainer.querySelectorAll('.template-btn').forEach(btn => btn.classList.remove('active'));
-            
-            if (isActive) {
-                textarea.value = '';
-            } else {
-                clickedBtn.classList.add('active');
-                const index = parseInt(clickedBtn.dataset.templateIndex);
-                textarea.value = i18n.t(this.preset.promptTemplates[index].valueKey);
-            }
+            this._toggleSingleTemplate(clickedBtn, templateContainer);
         }
         
-        this.handleTextareaInput({ target: textarea }, true);
-        textarea.focus();
+        // Manually trigger input event to update content and preview
+        this._handleTextareaInput({ target: this.textarea }, true);
+        this.textarea.focus();
+    }
+
+    /**
+     * Toggles a template button for presets that allow multiple selections.
+     * @private
+     */
+    _toggleMultipleTemplate(clickedBtn, templateContainer) {
+        clickedBtn.classList.toggle(CSS_CLASSES.ACTIVE);
+        const activeTemplates = Array.from(templateContainer.querySelectorAll(`.${CSS_CLASSES.TEMPLATE_BTN}.${CSS_CLASSES.ACTIVE}`))
+            .map(btn => {
+                const index = parseInt(btn.dataset.templateIndex);
+                return i18n.t(this.preset.promptTemplates[index].valueKey);
+            });
+        this.textarea.value = activeTemplates.join('\n\n---\n\n');
+    }
+
+    /**
+     * Toggles a template button for presets that only allow a single selection.
+     * @private
+     */
+    _toggleSingleTemplate(clickedBtn, templateContainer) {
+        const isActive = clickedBtn.classList.contains(CSS_CLASSES.ACTIVE);
+        templateContainer.querySelectorAll(`.${CSS_CLASSES.TEMPLATE_BTN}`).forEach(btn => btn.classList.remove(CSS_CLASSES.ACTIVE));
+        
+        if (isActive) {
+            this.textarea.value = '';
+        } else {
+            clickedBtn.classList.add(CSS_CLASSES.ACTIVE);
+            const index = parseInt(clickedBtn.dataset.templateIndex);
+            this.textarea.value = i18n.t(this.preset.promptTemplates[index].valueKey);
+        }
     }
     
-    // 사용자가 텍스트를 입력할 때마다 호출됩니다.
-    handleTextareaInput(e, isTemplateClick = false) {
+    /**
+     * Handles input events on the textarea.
+     * @private
+     * @param {Event} e - The input event.
+     * @param {boolean} isTemplateClick - Whether the input was triggered by a template click.
+     */
+    _handleTextareaInput(e, isTemplateClick = false) {
         this.content = e.target.value;
-        this.autoResize(e);
+        this._autoResize(e.target);
         window.blockManager.updatePreview();
 
-        // 자동완성 기능을 활성화할지 결정하는 로직입니다.
-        const cursorPos = e.target.selectionStart;
+        this._handleAutocompleteTrigger(e.target);
+
+        // If a template was not clicked and multiple selections are not allowed,
+        // deselect any active template buttons as the user is typing custom content.
+        if (!isTemplateClick && this.preset && !this.preset.allowMultiple) {
+            this.element.querySelectorAll(`.${CSS_CLASSES.TEMPLATE_BTN}.${CSS_CLASSES.ACTIVE}`)
+                .forEach(btn => btn.classList.remove(CSS_CLASSES.ACTIVE));
+        }
+    }
+
+    /**
+     * Checks for the autocomplete trigger ('<') and shows suggestions.
+     * @private
+     * @param {HTMLTextAreaElement} textarea - The textarea element.
+     */
+    _handleAutocompleteTrigger(textarea) {
+        const cursorPos = textarea.selectionStart;
         const textBeforeCursor = this.content.substring(0, cursorPos);
-        // 사용자가 '<' 다음에 영문/숫자를 입력하는 패턴을 찾습니다.
-        const triggerMatch = textBeforeCursor.match(/<([a-zA-Z0-9]*)$/);
+        const triggerMatch = textBeforeCursor.match(/<([a-zA-Z0-9_-]*)$/);
 
         if (triggerMatch) {
             this.autocomplete.active = true;
             this.autocomplete.triggerIndex = triggerMatch.index;
             const query = triggerMatch[1];
-            this.showAutocomplete(query, e.target);
+            this._showAutocomplete(query, textarea);
         } else {
-            this.hideAutocomplete();
-        }
-
-        // 사용자가 직접 타이핑한 경우, 활성화된 템플릿 버튼의 하이라이트를 해제합니다.
-        if (!isTemplateClick && !this.preset.allowMultiple) {
-            const blockElement = document.querySelector(`[data-block-id="${this.id}"]`);
-            if(blockElement) {
-                blockElement.querySelectorAll('.template-btn.active').forEach(btn => btn.classList.remove('active'));
-            }
+            this._hideAutocomplete();
         }
     }
 
-    // 텍스트 내용에 따라 입력창의 높이를 자동으로 조절합니다.
-    autoResize(e) {
-        e.target.style.height = 'auto';
-        e.target.style.height = (e.target.scrollHeight) + 'px';
+    /**
+     * Automatically resizes the textarea to fit its content.
+     * @private
+     * @param {HTMLTextAreaElement} textarea - The textarea element.
+     */
+    _autoResize(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = `${textarea.scrollHeight}px`;
     }
 
-    // 이 블록의 내용을 XML 형식으로 변환합니다.
+    /**
+     * Converts the block's data to an XML string.
+     * @returns {string} The XML representation of the block.
+     */
     toXML() {
-        if (!this.content.trim()) return `<${this.tagName}></${this.tagName}>`;
-        return `<${this.tagName}>\n${this.content}\n</${this.tagName}>`;
+        if (!this.content.trim()) {
+            return `<${this.tagName}></${this.tagName}>`;
+        }
+        return `<${this.tagName}>
+${this.content}
+</${this.tagName}>`;
     }
 
-    // --- 자동완성 기능 관련 메서드들 ---
-    showAutocomplete(query, textarea) {
-        const allTags = window.PromptEditor.getAllTags();
-        const suggestions = allTags.filter(tag => tag.startsWith(query.toLowerCase()));
-        this.autocomplete.suggestions = suggestions;
+    // --- Autocomplete Methods ---
+
+    /**
+     * Shows the autocomplete suggestion box.
+     * @private
+     * @param {string} query - The search query for tags.
+     * @param {HTMLTextAreaElement} textarea - The textarea element.
+     */
+    _showAutocomplete(query, textarea) {
+        const suggestions = window.blockManager.getUsedTags()
+            .filter(tag => tag.toLowerCase().startsWith(query.toLowerCase()) && tag !== this.tagName);
+
         if (suggestions.length === 0) {
-            this.hideAutocomplete();
+            this._hideAutocomplete();
             return;
         }
+        
+        this.autocomplete.suggestions = suggestions;
+
+        // Create autocomplete element if it doesn't exist
         if (!this.autocomplete.element) {
             this.autocomplete.element = document.createElement('div');
-            this.autocomplete.element.className = 'autocomplete-suggestions';
-            const parentBlock = document.querySelector(`[data-block-id="${this.id}"]`);
-            parentBlock.appendChild(this.autocomplete.element);
+            this.autocomplete.element.className = CSS_CLASSES.AUTOCOMPLETE_SUGGESTIONS;
+            document.body.appendChild(this.autocomplete.element);
+
+            // Use mousedown to prevent blur event from firing before click
+            this.autocomplete.element.addEventListener('mousedown', (e) => {
+                e.preventDefault(); // Prevent textarea from losing focus
+                const target = e.target.closest(`.${CSS_CLASSES.AUTOCOMPLETE_ITEM}`);
+                if (target) {
+                    this._selectAutocomplete(parseInt(target.dataset.index), textarea);
+                }
+            });
         }
+
         this.autocomplete.element.innerHTML = suggestions.map((tag, index) =>
-            `<div data-index="${index}">${tag}</div>`
+            `<div class="${CSS_CLASSES.AUTOCOMPLETE_ITEM}" data-index="${index}">${tag}</div>`
         ).join('');
+
+        this._positionAutocomplete(textarea);
+        this.autocomplete.element.classList.add(CSS_CLASSES.AUTOCOMPLETE_SHOW);
+
+        this.autocomplete.activeIndex = 0;
+        this._updateActiveSuggestion();
+    }
+    
+    /**
+     * Positions the autocomplete element relative to the cursor in the textarea.
+     * @private
+     * @param {HTMLTextAreaElement} textarea 
+     */
+    _positionAutocomplete(textarea) {
+        const rect = textarea.getBoundingClientRect();
         const lineHeight = parseFloat(getComputedStyle(textarea).lineHeight);
-        const lines = textarea.value.substring(0, this.autocomplete.triggerIndex).split('\n').length;
-        const top = textarea.offsetTop + (lines * lineHeight) + 5;
-        const left = textarea.offsetLeft + 10;
+        
+        // This is a simplified calculation. For a more precise position,
+        // we might need a hidden div to measure the text width.
+        const textToCursor = textarea.value.substring(0, this.autocomplete.triggerIndex);
+        const lines = textToCursor.split('\n').length;
+        
+        const top = rect.top + (lines * lineHeight) + window.scrollY;
+        const left = rect.left + window.scrollX; // Simplified left position
+
         this.autocomplete.element.style.top = `${top}px`;
         this.autocomplete.element.style.left = `${left}px`;
-        this.autocomplete.activeIndex = 0;
-        this.autocomplete.element.addEventListener('mousedown', (e) => {
+    }
+
+    /**
+     * Hides the autocomplete suggestion box.
+     * @private
+     */
+    _hideAutocomplete() {
+        if (!this.autocomplete.active) return;
+        this.autocomplete.active = false;
+        
+        const acElement = this.autocomplete.element;
+        if (acElement) {
+            acElement.classList.remove(CSS_CLASSES.AUTOCOMPLETE_SHOW);
+        }
+    }
+
+    /**
+     * Handles keyboard navigation within the autocomplete suggestions.
+     * @private
+     * @param {KeyboardEvent} e - The keyboard event.
+     */
+    _handleKeyDown(e) {
+        if (!this.autocomplete.active) return;
+
+        const { key } = e;
+        if (Object.values(KEY_CODES).includes(key)) {
             e.preventDefault();
-            const target = e.target.closest('div[data-index]');
-            if (target) {
-                this.selectAutocomplete(parseInt(target.dataset.index), textarea);
+        }
+
+        switch(key) {
+            case KEY_CODES.ARROW_DOWN:
+                this.autocomplete.activeIndex = (this.autocomplete.activeIndex + 1) % this.autocomplete.suggestions.length;
+                this._updateActiveSuggestion();
+                break;
+            case KEY_CODES.ARROW_UP:
+                this.autocomplete.activeIndex = (this.autocomplete.activeIndex - 1 + this.autocomplete.suggestions.length) % this.autocomplete.suggestions.length;
+                this._updateActiveSuggestion();
+                break;
+            case KEY_CODES.ENTER:
+            case KEY_CODES.TAB:
+                if (this.autocomplete.activeIndex !== -1) {
+                    this._selectAutocomplete(this.autocomplete.activeIndex, e.target);
+                }
+                break;
+            case KEY_CODES.ESCAPE:
+                this._hideAutocomplete();
+                break;
+        }
+    }
+
+    /**
+     * Updates the visual highlighting of the active suggestion.
+     * @private
+     */
+    _updateActiveSuggestion() {
+        if (!this.autocomplete.element) return;
+
+        const items = this.autocomplete.element.querySelectorAll(`.${CSS_CLASSES.AUTOCOMPLETE_ITEM}`);
+        items.forEach((item, index) => {
+            const isSelected = index === this.autocomplete.activeIndex;
+            item.classList.toggle(CSS_CLASSES.AUTOCOMPLETE_SELECTED, isSelected);
+            if (isSelected) {
+                item.scrollIntoView({ block: 'nearest', inline: 'nearest' });
             }
         });
     }
-    hideAutocomplete() {
-        if (this.autocomplete.element) {
-            this.autocomplete.element.remove();
-            this.autocomplete.element = null;
-        }
-        this.autocomplete.active = false;
-        this.autocomplete.activeIndex = -1;
-    }
-    handleKeyDown(e) {
-        if (!this.autocomplete.active) return;
-        if (['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)) {
-            e.preventDefault();
-        }
-        switch(e.key) {
-            case 'ArrowDown':
-                this.autocomplete.activeIndex = (this.autocomplete.activeIndex + 1) % this.autocomplete.suggestions.length;
-                this.updateActiveSuggestion();
-                break;
-            case 'ArrowUp':
-                this.autocomplete.activeIndex = (this.autocomplete.activeIndex - 1 + this.autocomplete.suggestions.length) % this.autocomplete.suggestions.length;
-                this.updateActiveSuggestion();
-                break;
-            case 'Enter':
-            case 'Tab':
-                if (this.autocomplete.activeIndex !== -1) {
-                    this.selectAutocomplete(this.autocomplete.activeIndex, e.target);
-                }
-                break;
-            case 'Escape':
-                this.hideAutocomplete();
-                break;
-        }
-    }
-    updateActiveSuggestion() {
-        if (!this.autocomplete.element) return;
-        const suggestions = this.autocomplete.element.querySelectorAll('div');
-        suggestions.forEach((div, index) => {
-            div.classList.toggle('active', index === this.autocomplete.activeIndex);
-        });
-        suggestions[this.autocomplete.activeIndex]?.scrollIntoView({ block: 'nearest' });
-    }
-    selectAutocomplete(index, textarea) {
+
+    /**
+     * Inserts the selected suggestion into the textarea.
+     * @private
+     * @param {number} index - The index of the selected suggestion.
+     * @param {HTMLTextAreaElement} textarea - The textarea element.
+     */
+    _selectAutocomplete(index, textarea) {
         const selectedTag = this.autocomplete.suggestions[index];
         const textBefore = this.content.substring(0, this.autocomplete.triggerIndex);
         const textAfter = this.content.substring(textarea.selectionStart);
-        const newContent = `${textBefore}<${selectedTag}>`;
-        textarea.value = newContent + textAfter;
-        this.content = textarea.value;
-        const newCursorPos = newContent.length;
+        
+        const newContent = `${textBefore}<${selectedTag}>${textAfter}`;
+        textarea.value = newContent;
+        this.content = newContent;
+        
+        const newCursorPos = textBefore.length + selectedTag.length + 2; // +2 for '<' and '>'
         textarea.focus();
         textarea.setSelectionRange(newCursorPos, newCursorPos);
-        this.hideAutocomplete();
+
+        this._hideAutocomplete();
         window.blockManager.updatePreview();
     }
 }
 
+// --- BlockManagerClass ---
+/**
+ * Manages all prompt blocks, including adding, removing, and rendering.
+ */
 class BlockManagerClass {
     constructor() {
         this.blocks = [];
@@ -262,98 +431,156 @@ class BlockManagerClass {
         this.previewElement = null;
         this.emptyState = null;
     }
+
+    /**
+     * Initializes the manager, caching DOM elements and setting up sortable functionality.
+     * @returns {boolean} True if initialization was successful, false otherwise.
+     */
     init() {
         this.container = document.getElementById('blockContainer');
         this.previewElement = document.getElementById('previewCode');
         this.emptyState = document.getElementById('emptyState');
+        
         if (!this.container || !this.previewElement || !this.emptyState) {
-            console.error('필수 DOM 요소를 찾을 수 없습니다.');
+            console.error('Essential DOM elements could not be found. BlockManager initialization failed.');
             return false;
         }
+
         this.updateDisplay();
-		new Sortable(this.container, {
-			animation: 150,
-			handle: '.block-header',
-            filter: '.block-actions', 
+        this._initSortable();
+        return true;
+    }
+
+    /**
+     * Initializes the Sortable.js library on the container.
+     * @private
+     */
+    _initSortable() {
+        new Sortable(this.container, {
+			animation: ANIMATION_DURATIONS.SORTABLE,
+			handle: `.${CSS_CLASSES.BLOCK_HEADER}`,
+            filter: `.${CSS_CLASSES.BLOCK_ACTIONS}`,
 			onEnd: (evt) => {
+                // Reorder the blocks array to match the new DOM order
 				const movedItem = this.blocks.splice(evt.oldIndex, 1)[0];
 				this.blocks.splice(evt.newIndex, 0, movedItem);
 				this.updatePreview();
 			}
 		});
-        return true;
     }
+
+    /**
+     * Adds a new block to the editor.
+     * @param {string} tagName - The XML tag name for the block.
+     * @param {string} [content=''] - The initial content of the block.
+     */
     addBlock(tagName, content = '') {
         const block = new PromptBlock(tagName, content);
         this.blocks.push(block);
-        this.renderBlock(block);
+        this._renderBlock(block);
         this.updateDisplay();
+        
+        // Focus the new block's textarea after a short delay to allow for rendering.
         setTimeout(() => {
-            const element = this.container.querySelector(`[data-block-id="${block.id}"] textarea`);
-            if (element) element.focus();
-        }, 100);
+            block.textarea?.focus();
+        }, 100); // A small delay is often necessary.
     }
+
+    /**
+     * Removes a block from the editor with a smooth animation.
+     * @param {string} blockId - The ID of the block to remove.
+     */
     removeBlock(blockId) {
         const index = this.blocks.findIndex(block => block.id === blockId);
         if (index === -1) return;
-        const element = this.container.querySelector(`[data-block-id="${blockId}"]`);
+
+        const block = this.blocks[index];
+        const element = block.element;
         if (!element) return;
-        const BLOCK_SCALE_DURATION = 300;
-        const BLOCK_HEIGHT_DURATION = 350;
-        element.classList.add('block-removing');
-        element.style.transition = 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-        element.style.transform = 'scale(0.8)';
-        element.style.opacity = '0';
-        element.style.pointerEvents = 'none';
+
+        // 1. Initial shrink and fade animation
+        element.classList.add(CSS_CLASSES.BLOCK_REMOVING);
+        
+        // 2. After the first animation, collapse the element's height.
         setTimeout(() => {
             const currentHeight = element.offsetHeight;
             const currentMargin = parseInt(getComputedStyle(element).marginBottom) || 0;
-            element.style.height = currentHeight + 'px';
-            element.style.marginBottom = currentMargin + 'px';
+            
+            // Set explicit height/margin to transition from.
+            element.style.height = `${currentHeight}px`;
+            element.style.marginBottom = `${currentMargin}px`;
             element.style.overflow = 'hidden';
+
+            // Use requestAnimationFrame to ensure the style changes are applied before the transition starts.
             requestAnimationFrame(() => {
-                element.style.transition = 'height 0.3s cubic-bezier(0.165, 0.84, 0.44, 1), margin-bottom 0.3s cubic-bezier(0.165, 0.84, 0.44, 1)';
                 element.style.height = '0px';
                 element.style.marginBottom = '0px';
             });
+
+            // 3. After the height collapse, remove the element from the DOM and data model.
             setTimeout(() => {
                 this.blocks.splice(index, 1);
                 element.remove();
                 this.updateDisplay();
-            }, BLOCK_HEIGHT_DURATION);
-        }, BLOCK_SCALE_DURATION);
+            }, ANIMATION_DURATIONS.BLOCK_HEIGHT);
+
+        }, ANIMATION_DURATIONS.BLOCK_SCALE);
     }
-    renderBlock(block) {
+
+    /**
+     * Renders a single block and adds it to the container with an entry animation.
+     * @private
+     * @param {PromptBlock} block - The block instance to render.
+     */
+    _renderBlock(block) {
         const element = block.createElement();
-        const BLOCK_ENTER_ANIMATION_DURATION = 500;
-        element.classList.add('block-entering');
+        element.classList.add(CSS_CLASSES.BLOCK_ENTERING);
         this.container.appendChild(element);
+        
         setTimeout(() => {
-            element.classList.remove('block-entering');
-        }, BLOCK_ENTER_ANIMATION_DURATION);
+            element.classList.remove(CSS_CLASSES.BLOCK_ENTERING);
+        }, ANIMATION_DURATIONS.BLOCK_ENTER);
     }
+
+    /**
+     * Renders all blocks currently in the manager.
+     */
     renderAllBlocks() {
         this.container.innerHTML = '';
-        this.blocks.forEach(block => this.renderBlock(block));
+        this.blocks.forEach(block => this._renderBlock(block));
     }
+
+    /**
+     * Updates the display to show either the blocks or the empty state message.
+     */
     updateDisplay() {
-        if (this.blocks.length === 0) {
-            this.emptyState.style.display = 'block';
-            this.container.style.display = 'none';
-        } else {
-            this.emptyState.style.display = 'none';
-            this.container.style.display = 'flex';
-        }
+        const hasBlocks = this.blocks.length > 0;
+        this.emptyState.style.display = hasBlocks ? 'none' : 'block';
+        this.container.style.display = hasBlocks ? 'flex' : 'none';
         this.updatePreview();
     }
+
+    /**
+     * Updates the XML preview with the current content of all blocks.
+     */
     updatePreview() {
         const xmlOutput = this.generateXML();
         this.previewElement.textContent = xmlOutput;
     }
+
+    /**
+     * Generates the complete XML string from all blocks.
+     * @returns {string} The combined XML string.
+     */
     generateXML() {
         if (this.blocks.length === 0) return '';
         return this.blocks.map(block => block.toXML()).join('\n\n');
     }
+
+    /**
+     * Clears all blocks from the editor.
+     * @param {boolean} [confirmNeeded=true] - If true, asks the user for confirmation before clearing.
+     */
     clearProject(confirmNeeded = true) {
         if (confirmNeeded && this.blocks.length > 0 && !confirm(i18n.t('confirm_clear_all'))) {
             return;
@@ -362,18 +589,19 @@ class BlockManagerClass {
         this.container.innerHTML = '';
         this.updateDisplay();
     }
+
     /**
-     * XML 텍스트를 파싱하여 블록으로 변환하고 에디터에 추가합니다.
-     * 이 함수는 나중에 AI 생성 기능에서도 재사용될 수 있습니다.
-     * @param {string} xmlText - 변환할 XML 형식의 문자열
-     * @param {string} [option='append'] - 가져오기 옵션 ('append' 또는 'replace')
-     * @returns {number} 성공적으로 추가된 블록의 수
+     * Imports blocks from an XML string.
+     * @param {string} xmlText - The XML string to import.
+     * @param {'append'|'replace'} [option='append'] - Whether to append to or replace existing blocks.
+     * @returns {number} The number of blocks successfully imported.
      */
     importFromXML(xmlText, option = 'append') {
-        // 간단한 정규식을 사용하여 <tag>content</tag> 쌍을 찾습니다.
-        const regex = /<([a-zA-Z0-9]+)>([\s\S]*?)<\/\1>/g;
+        // Corrected regex: Use a backreference (\1) to match the opening tag.
+        const regex = /<([a-zA-Z0-9_\-]+)>([\s\S]*?)<\/\1>/g;
         const blocksData = [];
         let match;
+
         while ((match = regex.exec(xmlText)) !== null) {
             blocksData.push({
                 tagName: match[1].trim(),
@@ -382,63 +610,66 @@ class BlockManagerClass {
         }
 
         if (blocksData.length === 0) {
-            return 0; // 변환할 블록이 없음
+            return 0;
         }
 
         if (option === 'replace') {
-            // 'replace' 옵션일 경우, 확인창 없이 모든 블록을 조용히 삭제합니다.
             this.clearProject(false);
         }
 
-        // 추출된 데이터를 기반으로 블록을 생성합니다.
         blocksData.forEach(data => {
             this.addBlock(data.tagName, data.content);
         });
 
         return blocksData.length;
     }
+
+    /**
+     * Gets a list of unique tag names currently used in the editor.
+     * @returns {string[]} An array of unique tag names.
+     */
+    getUsedTags() {
+        const tags = this.blocks.map(block => block.tagName);
+        return [...new Set(tags)];
+    }
 }
 
 /**
- * 화면 상단 중앙에 캡슐 형태의 알림을 표시합니다.
- * @param {string} message - 표시할 메시지
- * @param {string} [type='info'] - 알림 종류 ('success', 'error', 'info')
+ * Displays a short-lived notification message.
+ * @param {string} message - The message to display.
+ * @param {'info'|'success'|'error'} [type='info'] - The type of notification.
  */
 function showNotification(message, type = 'info') {
-    // 이전 알림이 있다면 즉시 제거하여 중복을 방지합니다.
-    const existingNotification = document.querySelector('.notification-capsule');
+    // Remove any existing notification to prevent overlap.
+    const existingNotification = document.querySelector(`.${CSS_CLASSES.NOTIFICATION_CAPSULE}`);
     if (existingNotification) {
         existingNotification.remove();
     }
 
-    // 새로운 알림 요소를 생성합니다.
     const notification = document.createElement('div');
-    notification.className = `notification-capsule ${type}`; // 종류에 맞는 CSS 클래스 부여
+    notification.className = `${CSS_CLASSES.NOTIFICATION_CAPSULE} ${type}`;
 
-    // 알림 종류에 따라 적절한 아이콘을 추가합니다.
-    let icon = '';
-    if (type === 'success') {
-        icon = '<i class="fas fa-check-circle"></i>';
-    } else if (type === 'error') {
-        icon = '<i class="fas fa-times-circle"></i>';
-    }
-    notification.innerHTML = `${icon} <span>${message}</span>`;
+    const ICONS = {
+        success: '<i class="fas fa-check-circle"></i>',
+        error: '<i class="fas fa-times-circle"></i>',
+        info: '' // Or a default info icon
+    };
 
-    // body에 알림을 추가하고, 'slide-in' 애니메이션을 실행합니다.
+    notification.innerHTML = `${ICONS[type] || ''} <span>${message}</span>`;
+
     document.body.appendChild(notification);
     
-    // 강제로 리플로우를 발생시켜 애니메이션이 확실히 동작하도록 합니다.
+    // Force a reflow before adding the 'show' class to trigger the transition.
     void notification.offsetWidth; 
     
-    notification.classList.add('show');
+    notification.classList.add(CSS_CLASSES.AUTOCOMPLETE_SHOW);
 
-    // 2.5초 후에 'slide-out' 애니메이션을 실행하고 DOM에서 제거합니다.
     setTimeout(() => {
-        notification.classList.remove('show');
+        notification.classList.remove(CSS_CLASSES.AUTOCOMPLETE_SHOW);
         
-        // 사라지는 애니메이션이 끝난 후 요소를 완전히 제거합니다.
+        // Remove the element from the DOM after the fade-out transition completes.
         notification.addEventListener('transitionend', () => {
             notification.remove();
         });
-    }, 2500);
+    }, ANIMATION_DURATIONS.NOTIFICATION_FADEOUT);
 }

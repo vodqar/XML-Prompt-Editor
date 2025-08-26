@@ -471,7 +471,6 @@ body {
     background: white;
     border: 2px solid #e9ecef;
     border-radius: 12px;
-    overflow: hidden;
     transition: all 0.3s ease;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     position: relative;
@@ -546,32 +545,6 @@ body {
 
 .block-content textarea:focus {
     outline: none;
-}
-
-.autocomplete-suggestions {
-    position: absolute;
-    background-color: #34495e;
-    color: white;
-    border-radius: 6px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    z-index: 100;
-    max-height: 150px;
-    overflow-y: auto;
-    width: max-content;
-}
-
-.autocomplete-suggestions div {
-    padding: 0.4rem 0.8rem;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-    font-family: 'Segoe UI', sans-serif;
-    font-size: 0.85rem;
-    white-space: nowrap;
-}
-
-.autocomplete-suggestions div:hover,
-.autocomplete-suggestions div.active {
-    background-color: #667eea;
 }
 
 .template-container {
@@ -1034,4 +1007,43 @@ body {
     color: #6c757d;    /* 부드러운 회색 */
     margin-top: 0.75rem;
     text-align: center;
+}
+
+/* ===================================
+   자동완성 추천 (Autocomplete Suggestions)
+=================================== */
+.autocomplete-suggestions {
+    position: absolute;
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 1050;
+    max-height: 5.6rem;
+    overflow-y: auto;
+    width: max-content;
+    min-width: 150px;
+    padding: 0.5rem;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+}
+
+.autocomplete-suggestions.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.autocomplete-item {
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-size: 0.9rem;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+.autocomplete-item.selected {
+    background-color: #667eea;
+    color: white;
 }
