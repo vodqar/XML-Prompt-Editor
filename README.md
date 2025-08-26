@@ -9,6 +9,7 @@ A web-based editor that allows you to easily write and manage AI prompts in XML 
 * **Tag Presets**: Add frequently used tags such as `role`, `instructions`, etc., with a single click.
 * **Live Preview**: The content you are editing is instantly converted to XML format and displayed.
 * **Responsive Design**: Provides an optimized screen on all devices, including desktops, tablets, and mobile.
+* **(Alpha)AI-Powered Generation**: Instantly create entire prompt structures from a simple text description. Must need your gemini API key(stored only in local)
 
 ### **🚀 Try it out**
 
