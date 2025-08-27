@@ -251,10 +251,10 @@ body {
 .editor-area {
     grid-area: editor;
     padding: 1.5rem;
-    overflow: hidden;
     background: #fafafa;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .editor-header {
@@ -474,6 +474,7 @@ body {
     transition: all 0.3s ease;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     position: relative;
+    overflow: hidden;
 }
 
 .prompt-block:hover {

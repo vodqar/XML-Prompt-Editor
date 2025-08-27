@@ -84,7 +84,7 @@ class PromptBlock {
 
         const iconClass = this.preset ? this.preset.icon : CSS_CLASSES.DEFAULT_ICON;
         const placeholderText = this.preset ? i18n.t(this.preset.placeholderKey) : i18n.t('default_block_placeholder');
-        const placeholder = placeholderText.replace(/\n/g, '&#10;');
+        const placeholder = placeholderText.replace(/\\n/g, '&#10;');
         
         const templatesHTML = this._createTemplatesHTML();
 
@@ -498,33 +498,35 @@ class BlockManagerClass {
         const element = block.element;
         if (!element) return;
 
-        // 1. Initial shrink and fade animation
-        element.classList.add(CSS_CLASSES.BLOCK_REMOVING);
+        // To prevent a "jump" when removing an item from a flex container with a 'gap',
+        // we animate the block's height, padding, and margin simultaneously.
+        // The key is animating the margin to a negative value equal to the container's gap.
+
+        // 1. Set explicit starting values for the transition.
+        const style = getComputedStyle(element);
+        element.style.height = style.height;
+        element.style.marginBottom = style.marginBottom;
+        element.style.overflow = 'hidden';
         
-        // 2. After the first animation, collapse the element's height.
+        // We define the transition directly on the element to ensure it runs as expected.
+        element.style.transition = `all ${ANIMATION_DURATIONS.BLOCK_HEIGHT}ms ease-in-out`;
+        
+        // 2. On the next frame, set the target values to trigger the animation.
+        requestAnimationFrame(() => {
+            element.style.height = '0px';
+            element.style.paddingTop = '0px';
+            element.style.paddingBottom = '0px';
+            // Animate margin to -1rem to counteract the 1rem gap from the parent container.
+            element.style.marginBottom = '-1rem';
+            element.style.opacity = '0';
+        });
+
+        // 3. After the animation completes, remove the element from the DOM and the data array.
         setTimeout(() => {
-            const currentHeight = element.offsetHeight;
-            const currentMargin = parseInt(getComputedStyle(element).marginBottom) || 0;
-            
-            // Set explicit height/margin to transition from.
-            element.style.height = `${currentHeight}px`;
-            element.style.marginBottom = `${currentMargin}px`;
-            element.style.overflow = 'hidden';
-
-            // Use requestAnimationFrame to ensure the style changes are applied before the transition starts.
-            requestAnimationFrame(() => {
-                element.style.height = '0px';
-                element.style.marginBottom = '0px';
-            });
-
-            // 3. After the height collapse, remove the element from the DOM and data model.
-            setTimeout(() => {
-                this.blocks.splice(index, 1);
-                element.remove();
-                this.updateDisplay();
-            }, ANIMATION_DURATIONS.BLOCK_HEIGHT);
-
-        }, ANIMATION_DURATIONS.BLOCK_SCALE);
+            this.blocks.splice(index, 1);
+            element.remove();
+            this.updateDisplay();
+        }, ANIMATION_DURATIONS.BLOCK_HEIGHT);
     }
 
     /**
